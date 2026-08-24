@@ -4,6 +4,3 @@ dist
 .env.local
 *.log
 .DS_Store
-.opencode/skills/craftengine-wiki/pack/applied
-.opencode/skills/craftengine-wiki/pack/edicts/*.yml
-.opencode/skills/craftengine-wiki/pack/edicts/*.md
