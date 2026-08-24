@@ -1,17 +1,9 @@
 node_modules
 dist
-.next
-.turbo
-data/projects/*
-!data/projects/.gitkeep
 .env
 .env.local
-playwright/.cache
 *.log
 .DS_Store
-graphify-out
-.opencode/skills/craftengine-wiki/.edicts-keep
 .opencode/skills/craftengine-wiki/pack/applied
 .opencode/skills/craftengine-wiki/pack/edicts/*.yml
 .opencode/skills/craftengine-wiki/pack/edicts/*.md
-!data/projects/.gitkeep
