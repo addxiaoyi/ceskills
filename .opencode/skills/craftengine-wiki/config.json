@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "wiki": {
+    "baseUrl": "https://ce-pre.gtemc.cn/zh-Hans",
+    "indexUrl": "https://ce-pre.gtemc.cn/zh-Hans/configuration"
+  },
+  "paths": {
+    "pack": ".",
+    "edicts": "edicts",
+    "applied": "applied",
+    "schema": "schema.json",
+    "graph": "graph.slim.json",
+    "pages": "pages",
+    "scripts": "scripts"
+  },
+  "validation": {
+    "idPattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+    "namespacePattern": "^[a-z][a-z0-9_.-]*$",
+    "pathPattern": "^[a-z0-9_./-]+$"
+  },
+  "lint": {
+    "requiredFields": {
+      "blocks": ["state", "states"],
+      "furniture": ["variants"]
+    },
+    "blockItemRequires": ["items", "block_item"],
+    "furnitureItemRequires": ["furniture", "furniture_item"],
+    "seatBlockSuggests": ["seats"],
+    "strippableBlockRequires": ["stripped"]
+  },
+  "aliases": {
+    "椅子": "seat",
+    "坐": "seat",
+    "椅": "seat",
+    "sofa": "seat",
+    "门": "door",
+    "作物": "crop",
+    "农作物": "crop",
+    "下落": "falling",
+    "掉落": "falling",
+    "家具": "furniture",
+    "长椅": "furniture",
+    "方块": "block",
+    "物品": "item",
+    "物品": "item",
+    "配方": "recipe",
+    "合成": "recipe",
+    "掉落表": "loot",
+    "战利品": "loot",
+    "条件": "condition",
+    "兼容": "compatibility",
+    "模板": "template",
+    "纹理": "texture",
+    "模型": "model",
+    "行为": "behavior",
+    "安装": "installation",
+    "重载": "installation",
+    "第一个方块": "first_block",
+    "第一个物品": "items"
+  }
+}

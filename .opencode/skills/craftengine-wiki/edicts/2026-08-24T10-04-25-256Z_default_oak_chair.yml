@@ -1,0 +1,14 @@
+blocks:
+  default:oak_chair:
+    state:
+      auto_state: note_block
+    behavior:
+      type: seat_block
+      seats:
+        - 0,0,0
+items:
+  default:oak_chair:
+    material: paper
+    behavior:
+      type: block_item
+      block: default:oak_chair

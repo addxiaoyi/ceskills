@@ -1,0 +1,26 @@
+---
+id: page:compatibility_axiom
+type: Compat
+url: https://ce-pre.gtemc.cn/zh-Hans/compatibility/axiom
+aliases: Axiom, compatibility axiom, ⚛️ Axiom
+---
+
+# ⚛️ Axiom
+
+- 类型：Compat
+- 原文：https://ce-pre.gtemc.cn/zh-Hans/compatibility/axiom
+- 连接数：1
+
+## 摘要
+
+# ⚛️ Axiom 首先，确保你的服务器已安装 [axiom-paper](https://modrinth.com/plugin/axiom-paper-plugin)。 然后下载并安装 [craft-engine-client-mod](https://www.minebbs.com/resources/craftengine-fabric.11289/download)。 确保客户端的 `server-side-blocks` 配置数量不小于服务端的 `block.serverside-blocks` 数量 启动客户端并且从模组菜单中启用 `启用服务器内自定义方块` 选项即可 对于服务器，只需在 config.yml 中启用 `generate-mod-assets` 选项，它就会自动生成与模组兼容的客户端资源。
+
+## YAML 片段
+
+```yaml
+# 本页没有抽出 YAML，请打开原文 URL
+```
+
+## 相关页面
+
+- requires → [🤝 兼容性](page_compatibility.md)
