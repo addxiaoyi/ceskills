@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type {
   LiubuResult, LiubuCheck, ZhongshuResult, MenxiaResult, EdictResult,
-  RouteResult, LintResult, QueryHit
+  RouteResult, LintResult, QueryHit, GenerateResult
 } from './types.js';
 import { route } from './route.js';
 import { query } from './query.js';
@@ -33,14 +33,19 @@ export function zhongshu(question: string, id?: string): ZhongshuResult {
   const suggest = routed.routes[0]?.suggest || question;
   const found = query(suggest);
   const genKind = pickKind(question, routed);
-  const gen = generate(genKind, id || 'default:draft');
+  let draft: GenerateResult | null = null;
+  try {
+    draft = generate(genKind, id || 'default:draft');
+  } catch {
+    // generate 失败时 draft 保持 null，后续流程会处理
+  }
   return {
     office: '中枢',
     role: '典书',
     question,
     route: routed.routes[0] || null,
     wikiHit: found.hits[0] ?? undefined,
-    draft: gen,
+    draft,
   };
 }
 
@@ -147,7 +152,20 @@ function stamp(): string {
 /** 完整流程：中枢 -> 门下 -> 六部 -> 谕旨 -> 归档 */
 export function runPipeline(question: string, id?: string, save: boolean = true): EdictResult {
   const z = zhongshu(question, id);
-  const yaml = z.draft?.yaml || '';
+  
+  // 如果中枢没有生成草稿（generate 抛出异常），直接返回失败
+  if (!z.draft) {
+    const out: EdictResult = {
+      ok: false,
+      zhongshu: z,
+      menxia: { office: '门下', role: '驳回', sealed: false, lint: { ok: false, file: '-', summary: { error: 1, warn: 0, info: 0 }, typesFound: [], issues: [{ level: 'error', msg: '生成草稿失败，ID 格式无效或 kind 未知', hint: '' }], wiki: '' }, optimize: [] },
+      liubu: { office: '六部', passed: 0, total: 6, ok: false, boards: [] },
+      edict: '# 驳回 | 六部审查\n\n- 生成草稿失败，ID 格式无效或 kind 未知',
+    };
+    return out;
+  }
+
+  const yaml = z.draft.yaml;
   const m = menxia(yaml);
   const b = liubu(yaml, { menxia: m, wikiHit: z.wikiHit });
   const ok = m.sealed && b.ok;

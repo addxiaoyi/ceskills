@@ -1,0 +1,11 @@
+blocks:
+  test:bad:
+    state:
+      auto_state: note_block
+      model:
+        texture: minecraft:block/stone
+    settings:
+      hardness: 1.5
+      resistance: 6.0
+      tags:
+        - minecraft:mineable/pickaxe

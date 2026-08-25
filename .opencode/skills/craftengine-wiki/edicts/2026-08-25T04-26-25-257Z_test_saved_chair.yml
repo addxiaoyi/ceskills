@@ -1,0 +1,14 @@
+blocks:
+  test:saved_chair:
+    state:
+      auto_state: note_block
+    behavior:
+      type: seat_block
+      seats:
+        - 0,0,0
+items:
+  test:saved_chair:
+    material: paper
+    behavior:
+      type: block_item
+      block: test:saved_chair

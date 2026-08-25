@@ -276,7 +276,12 @@ export function generate(kind: string, id: string): GenerateResult {
     throw new Error(`未知 kind: ${kind}，可选: ${VALID_KINDS.join(', ')}${hint}`);
   }
 
-  const finalId = id.includes(':') ? id : `default:${id}`;
+  let finalId = id;
+  if (!id.includes(':')) {
+    // 如果用户传了不带冒号的 ID，自动添加 default: 前缀
+    finalId = `default:${id}`;
+  }
+  // 验证最终的 ID 格式（包含前缀后）
   const validation = getValidationConfig();
   const idPattern = new RegExp(validation.idPattern);
   if (!idPattern.test(finalId)) {
