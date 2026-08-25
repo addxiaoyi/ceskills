@@ -3,20 +3,15 @@
  * 基于 schema.json 校验 behavior.type、必填字段、ID 格式等
  */
 import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import type { LintResult, LintIssue } from './types.js';
-import { getPaths, getLintConfig, getValidationConfig } from './config.js';
+import type { LintResult, LintIssue, WikiConfig } from './types.js';
+import { getPaths, getValidationConfig } from './config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-function loadSchema() {
+function loadSchema(): WikiConfig {
   const schemaPath = getPaths().schema;
   if (!fs.existsSync(schemaPath)) {
     throw new Error(`Schema 不存在: ${schemaPath}`);
   }
-  return JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+  return JSON.parse(fs.readFileSync(schemaPath, 'utf8')) as WikiConfig;
 }
 
 function add(issues: LintIssue[], kinds: { error: number; warn: number; info: number }, level: 'error' | 'warn' | 'info', msg: string, hint: string = '') {
@@ -26,18 +21,17 @@ function add(issues: LintIssue[], kinds: { error: number; warn: number; info: nu
 
 export function lint(text: string, fileArg: string = '-'): LintResult {
   const schema = loadSchema();
-  const lintConfig = getLintConfig();
   const validation = getValidationConfig();
 
   const issues: LintIssue[] = [];
   const kinds = { error: 0, warn: 0, info: 0 };
 
-  const allBehaviors = new Set([
+  const allBehaviors = new Set<string>([
     ...schema.blockBehaviors,
     ...schema.itemBehaviors,
     ...schema.furnitureBehaviors,
   ]);
-  const extraTypes = new Set([
+  const extraTypes = new Set<string>([
     ...(schema.recipeTypes || []),
     'shulker', 'interaction', 'item_display', 'block_display', 'text_display',
     'minecraft:model', 'model',
@@ -49,10 +43,9 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
   const hasRecipes = /^\s*recipes\s*:/m.test(text);
 
   if (!hasBlocks && !hasItems && !hasFurniture && !hasRecipes) {
-    add(issues, kinds, 'warn', '未声明任何顶级键 blocks/items/furniture/recipes', schema.wiki || '');
+    add(issues, kinds, 'warn', '未声明任何顶级键 blocks/items/furniture/recipes', schema.wikiUrl || '');
   }
 
-  // 必填字段校验
   if (hasBlocks && !/\b(state|states)\s*:/.test(text)) {
     add(issues, kinds, 'error', 'Block 必须包含 state/states', 'https://ce-pre.gtemc.cn/zh-Hans/configuration/block');
   }
@@ -60,7 +53,6 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     add(issues, kinds, 'error', 'Furniture 必须包含 variants', 'https://ce-pre.gtemc.cn/zh-Hans/configuration/furniture');
   }
 
-  // behavior.type 校验
   const typeRe = /\btype\s*:\s*["']?([A-Za-z0-9_.:-]+)/g;
   const seenTypes: string[] = [];
   let m: RegExpExecArray | null;
@@ -77,7 +69,6 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     }
   }
 
-  // 关联字段校验
   if (/\btype\s*:\s*block_item\b/.test(text) && !/\bblock\s*:/.test(text)) {
     add(issues, kinds, 'error', 'block_item 需要指定 block', 'https://ce-pre.gtemc.cn/zh-Hans/configuration/item/behaviors/block_item');
   }
@@ -91,7 +82,6 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     add(issues, kinds, 'error', 'strippable_block 必须配置 stripped', 'https://ce-pre.gtemc.cn/zh-Hans/configuration/block/behaviors/strippable_block');
   }
 
-  // 数值范围校验
   const hm = text.match(/\bhardness\s*:\s*(-?[\d.]+)/);
   if (hm) {
     const h = Number(hm[1]);
@@ -107,7 +97,6 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     if (v < 0 || v > 15) add(issues, kinds, 'error', 'luminance 必须在 0-15');
   }
 
-  // 占位符检查
   if (/namespace:path|\bmy_block\b|\bmy_item\b|\bxxx\b|\bTODO\b|\bchangeme\b/i.test(text)) {
     add(issues, kinds, 'warn', '发现占位符 namespace:path / my_block / xxx / TODO / changeme，请替换为真实 ID');
   }
@@ -115,9 +104,8 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     add(issues, kinds, 'error', '声明 behavior 必须包含 type');
   }
 
-  // ID 格式校验
   const idPattern = new RegExp(validation.idPattern);
-  const skipKeys = new Set([
+  const skipKeys = new Set<string>([
     'state', 'states', 'settings', 'behavior', 'behaviors', 'loot', 'events', 'data', 'model',
     'variants', 'material', 'texture', 'seats', 'tags', 'sounds', 'block', 'item', 'furniture',
   ]);
@@ -127,7 +115,7 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
   for (const line of lines) {
     if (/^(blocks|items|furniture|recipes)\s*:/.test(line)) { inRoot = true; continue; }
     if (inRoot && /^\S/.test(line) && !/^(blocks|items|furniture|recipes)\s*:/.test(line)) inRoot = false;
-    const mm = line.match(/^  ([A-Za-z0-9_.:-]+)\s*:/);
+    const mm = line.match(/^ {2}([A-Za-z0-9_.:-]+)\s*:/);
     if (!inRoot || !mm) continue;
     const id = mm[1];
     if (skipKeys.has(id) || id.includes(':')) continue;
@@ -136,7 +124,6 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     }
   }
 
-  // block_item 提示配套 items
   if (hasBlocks && !hasItems && /\btype\s*:\s*seat_block\b/.test(text)) {
     add(issues, kinds, 'info', 'seat_block 通常需要配套 items + block_item 以便手持');
   }
@@ -147,7 +134,7 @@ export function lint(text: string, fileArg: string = '-'): LintResult {
     summary: kinds,
     typesFound: [...new Set(seenTypes)],
     issues,
-    wiki: schema.wiki || 'https://ce-pre.gtemc.cn/zh-Hans/configuration',
+    wiki: schema.wikiUrl || 'https://ce-pre.gtemc.cn/zh-Hans/configuration',
   };
   return out;
 }

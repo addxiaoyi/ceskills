@@ -3,13 +3,8 @@
  * 基于 Lint 结果给出改进建议
  */
 import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import type { OptimizeResult, OptimizeTip, LintResult } from './types.js';
+import type { OptimizeResult, OptimizeTip } from './types.js';
 import { lint } from './lint.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export function optimize(text: string, fileArg: string = '-'): OptimizeResult {
   const lintResult = lint(text, fileArg);

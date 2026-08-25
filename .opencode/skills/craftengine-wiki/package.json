@@ -2,12 +2,19 @@
   "name": "craftengine-wiki-skill",
   "version": "1.0.0",
   "type": "module",
-  "description": "CraftEngine Wiki 技能 - 六部工作流",
+  "description": "CraftEngine Wiki 技能 - 六部工作流 (中枢→门下→六部→谕旨)",
   "scripts": {
     "build": "tsc",
+    "build:watch": "tsc --watch",
     "dev": "tsx watch src/liubu.ts",
     "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
     "skill:liubu": "tsx src/liubu.ts",
     "skill:route": "tsx src/route.ts",
     "skill:query": "tsx src/query.ts",
@@ -15,19 +22,30 @@
     "skill:generate": "tsx src/generate.ts",
     "skill:optimize": "tsx src/optimize.ts"
   },
-  "keywords": ["craftengine", "minecraft", "yaml", "wiki", "skill"],
+  "keywords": [
+    "craftengine",
+    "minecraft",
+    "yaml",
+    "wiki",
+    "skill",
+    "opencode"
+  ],
   "license": "MIT",
+  "author": "",
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.18.0",
+    "@typescript-eslint/parser": "^6.18.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.0",
     "typescript": "^5.3.0",
     "tsx": "^4.7.0",
     "vitest": "^1.0.0",
-    "eslint": "^8.56.0",
-    "@typescript-eslint/eslint-plugin": "^6.18.0",
-    "@typescript-eslint/parser": "^6.18.0"
+    "@vitest/coverage-v8": "^1.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "packageManager": "pnpm@8.15.0"
 }

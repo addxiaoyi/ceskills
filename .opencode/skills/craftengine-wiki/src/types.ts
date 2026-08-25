@@ -32,6 +32,13 @@ export interface WikiConfig {
     strippableBlockRequires: string[];
   };
   aliases: Record<string, string>;
+  // Schema properties
+  blockBehaviors: string[];
+  itemBehaviors: string[];
+  furnitureBehaviors: string[];
+  recipeTypes: string[];
+  typos: Record<string, string>;
+  wikiUrl?: string;
 }
 
 export interface RouteResult {
@@ -121,7 +128,7 @@ export interface ZhongshuResult {
   role: string;
   question: string;
   route: RouteHit | null;
-  wikiHit: QueryHit | null;
+  wikiHit: QueryHit | undefined;
   draft: GenerateResult | null;
 }
 

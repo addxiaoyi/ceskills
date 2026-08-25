@@ -2,8 +2,8 @@
  * 中枢 - 意图路由
  * 根据关键词将用户问题路由到对应的 Wiki 页面
  */
-import type { RouteResult, RouteHit } from './types.js';
-import { getWikiConfig, getAliases } from './config.js';
+import type { RouteResult } from './types.js';
+import { getWikiConfig } from './config.js';
 
 const RULES: Array<{ re: RegExp; type: string; suggest: string; path: string }> = [
   { re: /椅子|坐|椅|sofa|seat/i, type: 'Block', suggest: '椅子', path: 'configuration/block/behaviors/seat_block' },
@@ -33,13 +33,8 @@ export function route(question: string): RouteResult {
     throw new Error('问题不能为空');
   }
 
-  const aliases = getAliases();
-  const extra = Object.entries(aliases)
-    .filter(([k]) => q.toLowerCase().includes(k.toLowerCase()))
-    .map(([, v]) => v);
-
-  const hits = RULES.filter((r) => r.re.test(q));
   const wiki = getWikiConfig();
+  const hits = RULES.filter((r) => r.re.test(q));
 
   return {
     question: q,
@@ -48,14 +43,14 @@ export function route(question: string): RouteResult {
           type: h.type,
           suggest: h.suggest,
           url: `${wiki.baseUrl}/${h.path}`,
-          query: `node scripts/query.mjs "${h.suggest}"`,
+          query: `npx tsx src/query.ts "${h.suggest}"`,
         }))
       : [
           {
             type: 'Config',
             suggest: q.slice(0, 12),
             url: wiki.indexUrl,
-            query: `node scripts/query.mjs "${q}"`,
+            query: `npx tsx src/query.ts "${q}"`,
           },
         ],
   };

@@ -6,9 +6,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { WikiConfig } from './types.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const SKILL_ROOT = path.resolve(__dirname, '..');
+const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 let configCache: WikiConfig | null = null;
 
@@ -21,8 +19,8 @@ export function loadConfig(): WikiConfig {
   }
   
   const content = fs.readFileSync(configPath, 'utf8');
-  configCache = JSON.parse(content);
-  return configCache!;
+  configCache = JSON.parse(content) as WikiConfig;
+  return configCache;
 }
 
 export function getPaths() {

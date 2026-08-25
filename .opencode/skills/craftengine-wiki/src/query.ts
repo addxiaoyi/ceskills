@@ -3,13 +3,8 @@
  * 基于 graph.slim.json 进行语义检索
  */
 import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { QueryResult, QueryHit, GraphData, GraphNode } from './types.js';
 import { getPaths, getAliases } from './config.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 interface ScoredNode extends GraphNode {
   score: number;
@@ -20,7 +15,7 @@ function loadGraph(): GraphData {
   if (!fs.existsSync(graphPath)) {
     throw new Error(`图谱文件不存在: ${graphPath}`);
   }
-  return JSON.parse(fs.readFileSync(graphPath, 'utf8'));
+  return JSON.parse(fs.readFileSync(graphPath, 'utf8')) as GraphData;
 }
 
 function scoreNode(node: GraphNode, terms: string[]): number {

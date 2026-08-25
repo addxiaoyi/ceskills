@@ -4,11 +4,9 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
 import type {
   LiubuResult, LiubuCheck, ZhongshuResult, MenxiaResult, EdictResult,
-  RouteResult, QueryResult, GenerateResult, LintResult, QueryHit
+  RouteResult, LintResult, QueryHit
 } from './types.js';
 import { route } from './route.js';
 import { query } from './query.js';
@@ -16,20 +14,6 @@ import { generate } from './generate.js';
 import { lint } from './lint.js';
 import { optimize } from './optimize.js';
 import { getPaths } from './config.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-function runScript(script: string, args: string[], input?: string) {
-  const scriptPath = path.join(__dirname, script);
-  const r = spawnSync(process.execPath, [scriptPath, ...args], {
-    encoding: 'utf8',
-    input,
-  });
-  let json: unknown = null;
-  try { json = JSON.parse(r.stdout || 'null'); } catch { json = { raw: r.stdout, stderr: r.stderr }; }
-  return { status: r.status ?? 0, json, stderr: r.stderr };
-}
 
 function pickKind(question: string, routed: RouteResult): string {
   const s = (routed.routes[0]?.suggest || question).toLowerCase();
@@ -55,7 +39,7 @@ export function zhongshu(question: string, id?: string): ZhongshuResult {
     role: '典书',
     question,
     route: routed.routes[0] || null,
-    wikiHit: found.hits[0] ?? null,
+    wikiHit: found.hits[0] ?? undefined,
     draft: gen,
   };
 }
@@ -74,7 +58,7 @@ export function menxia(yamlText: string): MenxiaResult {
 }
 
 /** 六部：六项合规检查 */
-export function liubu(yamlText: string, ctx?: { menxia?: MenxiaResult; wikiHit?: QueryHit | null }): LiubuResult {
+export function liubu(yamlText: string, ctx?: { menxia?: MenxiaResult; wikiHit?: QueryHit }): LiubuResult {
   const t = yamlText || '';
   const hit = ctx?.wikiHit;
 
@@ -270,4 +254,3 @@ if (isMainModule) {
     process.exit(1);
   }
 }
-
