@@ -109,6 +109,8 @@ pre code{background:none;padding:0}
 .board .name{font-weight:700;min-width:50px}
 .board .duty{color:var(--text2);flex:1}
 .board .status{font-weight:600;font-size:12px}
+.copy-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 14px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:all .2s}
+.copy-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* ========== Site Config Panel ========== */
 .sidebar-header{padding:16px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between;align-items:center}
@@ -120,6 +122,8 @@ pre code{background:none;padding:0}
 .form-group textarea{min-height:60px;resize:vertical;font-size:12px}
 .form-group input:focus,.form-group textarea:focus{border-color:var(--accent)}
 .form-group .hint{font-size:11px;color:var(--text2);margin-top:2px}
+.json-invalid{border-color:var(--red)!important;background:rgba(255,118,117,.08)!important}
+.json-invalid:focus{border-color:var(--red)!important;box-shadow:0 0 0 2px rgba(255,118,117,.2)}
 
 /* ========== Edict Output ========== */
 .edict-output{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
@@ -351,18 +355,49 @@ function loadConfig() {
 function saveConfig() { localStorage.setItem('workflow-config', JSON.stringify(config)); }
 
 function readConfigFromUI() {
+  let ok = true;
+  // 用 try/catch 逐字段解析，任一 JSON 非法则返回 false 且高亮该字段
+  const parseField = (id, target) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    try {
+      config[target] = JSON.parse(el.value);
+      el.classList.remove('json-invalid');
+      el.removeAttribute('title');
+    } catch (e) {
+      ok = false;
+      el.classList.add('json-invalid');
+      el.setAttribute('title', 'JSON 语法错误: ' + e.message);
+    }
+  };
+
   config.name = document.getElementById('cfg-name').value;
   config.wiki.baseUrl = document.getElementById('cfg-baseUrl').value;
   config.wiki.indexUrl = document.getElementById('cfg-indexUrl').value;
   config.validation.idPattern = document.getElementById('cfg-idPattern').value;
-  try { config.aliases = JSON.parse(document.getElementById('cfg-aliases').value || '{}'); } catch {}
-  try { config.blockBehaviors = JSON.parse(document.getElementById('cfg-blockBehaviors').value || '[]'); } catch {}
-  try { config.itemBehaviors = JSON.parse(document.getElementById('cfg-itemBehaviors').value || '[]'); } catch {}
-  try { config.furnitureBehaviors = JSON.parse(document.getElementById('cfg-furnitureBehaviors').value || '[]'); } catch {}
-  try { config.recipeTypes = JSON.parse(document.getElementById('cfg-recipeTypes').value || '[]'); } catch {}
-  try { config.typos = JSON.parse(document.getElementById('cfg-typos').value || '{}'); } catch {}
-  try { config.routes = JSON.parse(document.getElementById('cfg-routes').value || '[]'); } catch {}
-  saveConfig();
+
+  parseField('cfg-aliases', 'aliases');
+  parseField('cfg-blockBehaviors', 'blockBehaviors');
+  parseField('cfg-itemBehaviors', 'itemBehaviors');
+  parseField('cfg-furnitureBehaviors', 'furnitureBehaviors');
+  parseField('cfg-recipeTypes', 'recipeTypes');
+  parseField('cfg-typos', 'typos');
+  parseField('cfg-routes', 'routes');
+  return ok;
+}
+
+// autoSaveConfig：仅在 JSON 全部合法时才写 localStorage；非法时提示但不破坏已存配置
+let _saveTimer = null;
+function autoSaveConfig() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    const ok = readConfigFromUI();
+    if (ok) {
+      saveConfig();
+      addLog('ok', '配置已保存');
+    }
+    // 非法时不保存，不弹 log（避免输入时刷屏），红色边框已在 readConfigFromUI 中设置
+  }, 600);
 }
 
 function writeConfigToUI() {
@@ -444,74 +479,103 @@ function setStatus(text) {
 }
 
 function addLog(type, msg) {
+  let logPane = document.getElementById('log-pane');
+  if (!logPane) {
+    // 第一次调用时创建日志面板
+    logPane = document.createElement('div');
+    logPane.id = 'log-pane';
+    logPane.style.cssText = 'border-top:1px solid var(--border);padding:12px 24px;background:var(--surface);max-height:160px;overflow-y:auto;flex-shrink:0;font-size:12px;font-family:var(--mono);display:flex;flex-direction:column;gap:2px';
+    const header = document.createElement('div');
+    header.style.cssText = 'color:var(--text2);font-size:11px;font-weight:600;margin-bottom:4px;display:flex;gap:8px;align-items:center';
+    header.innerHTML = '<span>📋 控制台</span><span style="flex:1"></span><span onclick="this.parentElement.parentElement.remove()" style="cursor:pointer;color:var(--text2)">×</span>';
+    logPane.appendChild(header);
+    document.querySelector('.main').appendChild(logPane);
+  }
   const t = new Date().toLocaleTimeString();
   const log = document.createElement('div');
-  log.className = 'log';
-  log.innerHTML = `<span class="time">${t}</span><span class="msg ${type}">${msg}</span>`;
-  const content = document.getElementById('content');
-  content.insertBefore(log, content.firstChild);
-  if (content.children.length > 50) content.removeChild(content.lastChild);
+  log.style.cssText = 'display:flex;gap:8px;color:var(--text2)';
+  const colors = { ok: 'var(--green)', info: 'var(--blue)', warn: 'var(--orange)', err: 'var(--red)' };
+  log.innerHTML = `<span style="flex-shrink:0;width:70px">${t}</span><span style="color:${colors[type]||'var(--text2)'}">${msg}</span>`;
+  logPane.appendChild(log);
+  logPane.scrollTop = logPane.scrollHeight;
 }
 
 // ===================================================================
-//  CORE WORKFLOW
+//  CORE WORKFLOW — async/await 流水线
+//  每个步骤按序执行，共享 state 对象；单个步骤失败不中断后续，
+//  可继续查看后续步骤输出（如 Lint 失败后仍看优化建议）。
 // ===================================================================
-function runWorkflow() {
-  readConfigFromUI();
+async function runWorkflow() {
   const q = document.getElementById('query-input').value.trim();
-  if (!q) { alert('请输入需求'); return; }
+  if (!q) { showToast('请输入需求', 'warn'); return; }
+
+  const readOk = readConfigFromUI();
+  if (!readOk) { showToast('配置 JSON 有语法错误，请先修复', 'err'); return; }
 
   document.getElementById('run-btn').disabled = true;
   document.getElementById('empty-state').style.display = 'none';
-  document.querySelectorAll('.content section').forEach(s => { s.innerHTML = ''; s.classList.remove('active'); });
+  document.querySelectorAll('.content section').forEach(s => { s.innerHTML = ''; });
   for (let i = 0; i < 7; i++) setDot(i, 'pending');
   setStatus('运行中...');
 
-  // 异步执行各步骤
-  setTimeout(() => {
-    try {
-      const stepRoute = doRoute(q);
-      switchStep(0);
-      setTimeout(() => {
-        try {
-          const stepQuery = doQuery(q, stepRoute);
-          switchStep(1);
-          setTimeout(() => {
-            try {
-              const stepGenerate = doGenerate(q, stepRoute, stepQuery);
-              switchStep(2);
-              setTimeout(() => {
-                try {
-                  const stepLint = doLint(stepGenerate);
-                  switchStep(3);
-                  setTimeout(() => {
-                    try {
-                      const stepOptimize = doOptimize(stepGenerate);
-                      switchStep(4);
-                      setTimeout(() => {
-                        try {
-                          const stepLiubu = doLiubu(stepGenerate, stepLint, stepQuery);
-                          switchStep(5);
-                          setTimeout(() => {
-                            try {
-                              doEdict(stepRoute, stepQuery, stepGenerate, stepLint, stepOptimize, stepLiubu);
-                              switchStep(6);
-                              setStatus('✅ 完成');
-                              setDot(6, 'pass');
-                            } catch(e) { setDot(6, 'fail'); setStatus('❌ 谕旨失败'); addLog('err', e.message); }
-                          }, 200);
-                        } catch(e) { setDot(5, 'fail'); setStatus('❌ 六部失败'); addLog('err', e.message); }
-                      }, 200);
-                    } catch(e) { setDot(4, 'fail'); setStatus('❌ 优化失败'); addLog('err', e.message); }
-                  }, 200);
-                } catch(e) { setDot(3, 'fail'); setStatus('❌ Lint失败'); addLog('err', e.message); }
-              }, 200);
-            } catch(e) { setDot(2, 'fail'); setStatus('❌ 生成失败'); addLog('err', e.message); }
-          }, 200);
-        } catch(e) { setDot(1, 'fail'); setStatus('❌ 检索失败'); addLog('err', e.message); }
-      }, 200);
-    } catch(e) { setDot(0, 'fail'); setStatus('❌ 路由失败'); addLog('err', e.message); }
-  }, 100);
+  // 步骤定义：每个 step 是 async 函数，返回 boolean 表示该步是否"通过"
+  const state = {};
+  const steps = [
+    { name: '路由', fn: () => { state.route = doRoute(q); return true; } },
+    { name: '检索', fn: () => { state.query = doQuery(q, state.route); return (state.query.hits ?? []).length > 0; } },
+    { name: '生成', fn: () => { state.gen = doGenerate(q, state.route, state.query); return true; } },
+    { name: 'Lint', fn: () => { state.lint = doLint(state.gen); return state.lint.ok; } },
+    { name: '优化', fn: () => { state.optimize = doOptimize(state.gen); return true; } },
+    { name: '六部', fn: () => { state.liubu = doLiubu(state.gen, state.lint, state.query); return state.liubu.ok; } },
+    { name: '谕旨', fn: () => { state.edict = doEdict(state.route, state.query, state.gen, state.lint, state.optimize, state.liubu); return state.liubu.ok && state.lint.ok; } },
+  ];
+
+  try {
+    for (let i = 0; i < steps.length; i++) {
+      switchStep(i);
+      // 视觉上让当前步骤呈"运行中"（微延迟以渲染动画）
+      setDot(i, 'running');
+      await sleep(120);
+      const passed = await Promise.resolve().then(steps[i].fn);
+      // 谕旨步骤若主体通过但 lint/六部有 error，dot 仍标 fail
+      if (i === 6) {
+        const allOk = state.liubu.ok && state.lint.ok;
+        setDot(6, allOk ? 'pass' : 'fail');
+        setStatus(allOk ? '✅ 工作流完成，可归档' : '❌ 驳回：存在未通过项');
+      } else {
+        setDot(i, passed ? 'pass' : 'fail');
+        setStatus(passed ? `✅ ${steps[i].name}完成` : `⚠️ ${steps[i].name}未通过`);
+      }
+    }
+    addLog('ok', '工作流执行完毕');
+  } catch (e) {
+    addLog('err', `工作流异常: ${e.message}`);
+    setStatus('❌ 工作流异常');
+  } finally {
+    document.getElementById('run-btn').disabled = false;
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===================================================================
+//  Toast 轻提示（替代 alert）
+// ===================================================================
+function showToast(msg, type = 'info') {
+  let box = document.getElementById('toast-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'toast-box';
+    box.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center';
+    document.body.appendChild(box);
+  }
+  const el = document.createElement('div');
+  const colors = { info: '#74b9ff', warn: '#fdcb6e', err: '#ff7675', ok: '#00cec9' };
+  el.style.cssText = `background:#232740;color:${colors[type]};border:1px solid ${colors[type]}55;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.4);opacity:0;transition:opacity .3s`;
+  el.textContent = msg;
+  box.appendChild(el);
+  requestAnimationFrame(() => el.style.opacity = '1');
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2600);
 }
 
 // ===================================================================
@@ -551,28 +615,34 @@ function doRoute(q) {
 function doQuery(q, route) {
   setDot(1, 'running');
   const suggest = route.suggest || q;
-  // 模拟检索：基于别名和关键词匹配
   const aliases = config.aliases || {};
-  const terms = [suggest.toLowerCase(), ...Object.entries(aliases).filter(([k]) => suggest.includes(k)).map(([,v]) => v)];
+  const terms = [suggest.toLowerCase(), ...Object.entries(aliases)
+    .filter(([k]) => suggest.includes(k) || q.includes(k))
+    .map(([,v]) => v)];
+  const unique = [...new Set(terms)];
 
-  const hits = terms.map((t, i) => ({
-    id: `page:${t}`,
-    label: `📄 ${t} 页面`,
-    type: 'Page',
-    url: route.url,
-    yaml: `${t}: 示例 YAML 内容`,
-    page: `pages/${t}.md`,
-    score: (terms.length - i) * 5
-  })).slice(0, 5);
+  // 模拟检索：对每个 term 构建命中，按匹配度排序
+  const hits = unique.map((t, i) => {
+    const score = (unique.length - i) * 5 + (t.includes(suggest) ? 10 : 0);
+    return {
+      id: `page:${t}`,
+      label: `📄 ${t} 页面`,
+      type: 'Page',
+      url: route.url,
+      score,
+      yaml: `# ${t} 示例`,
+      page: `pages/${t}.md`,
+    };
+  }).sort((a, b) => b.score - a.score).slice(0, 5);
 
   const html = `<div class="card">
-    <h3>📚 Wiki 检索</h3>
-    <div class="meta">检索词: ${terms.join(', ')}</div>
+    <h3>🔎 Wiki 检索</h3>
+    <div class="meta">检索词: ${unique.join(', ')}</div>
     ${hits.length ? hits.map(h => `<div class="board pass">
-      <span class="name">${h.label}</span>
-      <span class="duty">${h.url}</span>
-      <span class="status">● 命中</span>
-    </div>`).join('') : '<div class="board fail"><span class="name">无结果</span><span class="duty">未命中任何 Wiki 条目</span></div>'}
+      <span class="name" style="min-width:auto">${h.label}</span>
+      <span class="duty" style="font-size:12px">得分: ${h.score}</span>
+      <span class="status">● ${h.url}</span>
+    </div>`).join('') : '<div class="board fail"><span class="name">无结果</span><span class="duty">未命中任何条目</span></div>'}
   </div>`;
   document.getElementById('step-1').innerHTML = html;
   setDot(1, hits.length ? 'pass' : 'fail');
@@ -587,7 +657,14 @@ function doQuery(q, route) {
 function doGenerate(q, route, query) {
   setDot(2, 'running');
   const kind = route.kind || 'block';
-  const id = `${kind}:${q.replace(/[\s:]+/g,'_').toLowerCase().slice(0, 20)}`;
+  // 从需求中提取可用的英文 id：取路由 suggest 或使用"default:oak_chair"风格
+  const rawId = route.suggest || 'custom';
+  const cleanId = rawId
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '') || 'custom';
+  const id = `default:${cleanId}`;
 
   const templates = {
     block: `blocks:\n  ${id}:\n    state:\n      auto_state: note_block\n      model:\n        texture: minecraft:block/stone\n    settings:\n      hardness: 1.5\n      resistance: 6.0\n      tags:\n        - minecraft:mineable/pickaxe`,
@@ -605,6 +682,7 @@ function doGenerate(q, route, query) {
   const html = `<div class="card">
     <h3>📝 生成草稿</h3>
     <div class="meta">kind: ${kind} | id: ${id}</div>
+    <div style="margin-bottom:8px"><button class="copy-btn" onclick="copyYaml(this)">📋 复制 YAML</button></div>
     <pre><code>${escapeHtml(yaml)}</code></pre>
   </div>`;
   document.getElementById('step-2').innerHTML = html;
@@ -793,6 +871,26 @@ function doEdict(route, query, gen, lint, optimize, liubu) {
 // ===================================================================
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function copyYaml(btn) {
+  // 找到按钮同级的 pre 或父级 card 内的 pre
+  const pre = btn.parentElement.nextElementSibling?.tagName === 'PRE'
+    ? btn.parentElement.nextElementSibling
+    : btn.closest('.card')?.querySelector('pre');
+  if (!pre) return;
+  const text = pre.textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✅ 已复制';
+    setTimeout(() => btn.textContent = orig, 1200);
+  }).catch(() => {
+    // fallback 方式
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    btn.textContent = '✅ 已复制';
+    setTimeout(() => btn.textContent = orig, 1200);
+  });
 }
 
 // ===================================================================
