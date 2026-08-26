@@ -15,16 +15,25 @@ import { lint } from './lint.js';
 import { optimize } from './optimize.js';
 import { getPaths } from './config.js';
 
-function pickKind(question: string, routed: RouteResult): string {
-  const s = (routed.routes[0]?.suggest || question).toLowerCase();
-  if (/椅子|坐|椅|sofa|seat/.test(s)) return 'seat';
-  if (/门/.test(s)) return 'door';
-  if (/作物|农作物/.test(s)) return 'crop';
-  if (/下落|掉落/.test(s)) return 'falling';
-  if (/家具|长椅|furniture/.test(s)) return 'furniture';
-  if (/配方|合成|recipe/.test(s)) return 'recipe';
-  if (/物品|item/.test(s)) return 'item';
-  return 'block';
+/** 通过路由命中结果的 kind 直接映射生成模板；未命中回落到 block */
+function pickKind(routed: RouteResult): string {
+  const kind = routed.routes[0]?.kind;
+  if (!kind || kind === 'query') return 'block';
+  // 路由 kind 与 generate 模板 kind 存在命名差异时映射（如 first_block/loot 等文档页）
+  const nonTemplate: Record<string, string> = {
+    first_block: 'block',
+    first_items: 'item',
+    event: 'block',
+    condition: 'block',
+    compat: 'block',
+    installation: 'block',
+    template: 'block',
+    behavior: 'block',
+    model: 'item',
+    api: 'block',
+    addon: 'block',
+  };
+  return nonTemplate[kind] ?? kind;
 }
 
 /** 中枢：路由 -> 检索 -> 生成 */
@@ -32,7 +41,7 @@ export function zhongshu(question: string, id?: string): ZhongshuResult {
   const routed = route(question);
   const suggest = routed.routes[0]?.suggest || question;
   const found = query(suggest);
-  const genKind = pickKind(question, routed);
+  const genKind = pickKind(routed);
   let draft: GenerateResult | null = null;
   try {
     draft = generate(genKind, id || 'default:draft');
@@ -63,7 +72,7 @@ export function menxia(yamlText: string): MenxiaResult {
 }
 
 /** 六部：六项合规检查 */
-export function liubu(yamlText: string, ctx?: { menxia?: MenxiaResult; wikiHit?: QueryHit }): LiubuResult {
+export function liubu(yamlText: string, ctx?: { menxia?: MenxiaResult; wikiHit?: Partial<QueryHit> }): LiubuResult {
   const t = yamlText || '';
   const hit = ctx?.wikiHit;
 
@@ -248,7 +257,7 @@ if (isMainModule) {
       if (!file) { console.error('issue 需要文件参数'); process.exit(1); }
       const text = file === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(file, 'utf8');
       const m = menxia(text);
-      const b = liubu(text, { menxia: m, wikiHit: { url: 'local' } as QueryHit });
+      const b = liubu(text, { menxia: m, wikiHit: { url: 'local' } });
       console.log(JSON.stringify({ menxia: m, liubu: b }, null, 2));
       process.exit(b.ok ? 0 : 1);
     } else if (cmd === 'run') {

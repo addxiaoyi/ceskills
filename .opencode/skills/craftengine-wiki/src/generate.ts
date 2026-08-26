@@ -5,6 +5,33 @@
 import type { GenerateResult } from './types.js';
 import { getValidationConfig } from './config.js';
 
+/** 简单行为方块模板：所有仅替换 behavior type 的方块共用此工厂 */
+function simpleBlock(type: string): (id: string) => string {
+  return (id) => `blocks:
+  ${id}:
+    state:
+      auto_state: note_block
+    behavior:
+      type: ${type}
+`;
+}
+
+/** 带配套物品的方块模板（block_item） */
+function blockWithItem(type: string, itemType = 'block_item'): (id: string) => string {
+  return (id) => `blocks:
+  ${id}:
+    state:
+      auto_state: note_block
+    behavior:
+      type: ${type}
+items:
+  ${id}:
+    behavior:
+      type: ${itemType}
+      block: ${id}
+`;
+}
+
 const T: Record<string, (id: string) => string> = {
   block: (id) => `blocks:
   ${id}:
@@ -40,27 +67,6 @@ items:
       type: block_item
       block: ${id}
 `,
-  door: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: door_block
-`,
-  crop: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: crop_block
-`,
-  falling: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: falling_block
-`,
   furniture: (id) => `furniture:
   ${id}:
     variants:
@@ -93,145 +99,30 @@ items:
       B: minecraft:oak_planks
     result: ${id}
 `,
-  fence: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: fence_block
-`,
-  fence_gate: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: fence_gate_block
-`,
-  wall: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: wall_block
-`,
-  lamp: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: lamp_block
-`,
-  trapdoor: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: trapdoor_block
-`,
-  stairs: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: stairs_block
-`,
-  slab: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: slab_block
-`,
-  button: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: button_block
-`,
-  pressure_plate: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: pressure_plate_block
-`,
-  wall_block: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: wall_block
-`,
-  grass: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: grass_block
-`,
-  sapling: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: sapling_block
-`,
-  leaves: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: leaves_block
-`,
-  simple_storage: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: simple_storage_block
-items:
-  ${id}:
-    behavior:
-      type: block_item
-      block: ${id}
-`,
-  display_item: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: display_item_block
-items:
-  ${id}:
-    behavior:
-      type: block_item
-      block: ${id}
-`,
-  double_high: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: double_high_block
-items:
-  ${id}:
-    behavior:
-      type: double_high_block_item
-      block: ${id}
-`,
-  drawer: (id) => `blocks:
-  ${id}:
-    state:
-      auto_state: note_block
-    behavior:
-      type: drawer_block
-items:
-  ${id}:
-    behavior:
-      type: block_item
-      block: ${id}
-`,
+
+  // ---- simpleBlock 系列 ----
+  door: simpleBlock('door_block'),
+  crop: simpleBlock('crop_block'),
+  falling: simpleBlock('falling_block'),
+  fence: simpleBlock('fence_block'),
+  fence_gate: simpleBlock('fence_gate_block'),
+  wall: simpleBlock('wall_block'),
+  wall_block: simpleBlock('wall_block'),
+  lamp: simpleBlock('lamp_block'),
+  trapdoor: simpleBlock('trapdoor_block'),
+  stairs: simpleBlock('stairs_block'),
+  slab: simpleBlock('slab_block'),
+  button: simpleBlock('button_block'),
+  pressure_plate: simpleBlock('pressure_plate_block'),
+  grass: simpleBlock('grass_block'),
+  sapling: simpleBlock('sapling_block'),
+  leaves: simpleBlock('leaves_block'),
+
+  // ---- blockWithItem 系列 ----
+  simple_storage: blockWithItem('simple_storage_block'),
+  display_item: blockWithItem('display_item_block'),
+  drawer: blockWithItem('drawer_block'),
+  double_high: blockWithItem('double_high_block', 'double_high_block_item'),
 };
 
 const WIKI_MAP: Record<string, string> = {
@@ -246,6 +137,7 @@ const WIKI_MAP: Record<string, string> = {
   fence: 'configuration/block/behaviors/fence_block',
   fence_gate: 'configuration/block/behaviors/fence_gate_block',
   wall: 'configuration/block/behaviors/wall_block',
+  wall_block: 'configuration/block/behaviors/wall_block',
   lamp: 'configuration/block/behaviors/lamp_block',
   trapdoor: 'configuration/block/behaviors/trapdoor_block',
   stairs: 'configuration/block/behaviors/stairs_block',
@@ -259,15 +151,14 @@ const WIKI_MAP: Record<string, string> = {
   double_high: 'configuration/block/behaviors/double_high_block',
   drawer: 'configuration/block/behaviors/drawer_block',
   grass: 'configuration/block/behaviors/grass_block',
-  wall_block: 'configuration/block/behaviors/wall_block',
 };
 
 const VALID_KINDS = Object.keys(T);
 
 export function generate(kind: string, id: string): GenerateResult {
   const normalizedKind = kind.toLowerCase();
-  const fn = T[normalizedKind] || null;
-  
+  const fn = T[normalizedKind] ?? null;
+
   if (!fn) {
     const suggestions = VALID_KINDS
       .filter(k => k.startsWith(normalizedKind) || normalizedKind.startsWith(k))

@@ -42,7 +42,6 @@
     "长椅": "furniture",
     "方块": "block",
     "物品": "item",
-    "物品": "item",
     "配方": "recipe",
     "合成": "recipe",
     "掉落表": "loot",
@@ -57,5 +56,26 @@
     "重载": "installation",
     "第一个方块": "first_block",
     "第一个物品": "items"
-  }
+  },
+  "routes": [
+    { "kind": "seat", "keywords": ["椅子", "坐", "椅", "sofa", "seat"], "suggest": "椅子", "path": "configuration/block/behaviors/seat_block" },
+    { "kind": "door", "keywords": ["门"], "suggest": "门", "path": "configuration/block/behaviors/door_block" },
+    { "kind": "crop", "keywords": ["作物", "农作物", "crop"], "suggest": "作物", "path": "configuration/block/behaviors/crop_block" },
+    { "kind": "loot", "keywords": ["掉落表", "战利品", "loot"], "suggest": "掉落表", "path": "reference/loot_table" },
+    { "kind": "falling", "keywords": ["下落", "掉落", "falling"], "suggest": "下落", "path": "configuration/block/behaviors/falling_block" },
+    { "kind": "furniture", "keywords": ["家具", "长椅", "furniture", "bench"], "suggest": "家具", "path": "configuration/furniture" },
+    { "kind": "first_block", "keywords": ["第一个方块", "新手方块"], "suggest": "第一个方块", "path": "getting_start/first_block" },
+    { "kind": "first_items", "keywords": ["第一个物品", "新手物品"], "suggest": "第一个物品", "path": "getting_start/items" },
+    { "kind": "item", "keywords": ["物品", "item"], "suggest": "物品", "path": "configuration/item" },
+    { "kind": "recipe", "keywords": ["配方", "合成", "recipe"], "suggest": "配方", "path": "configuration/recipe" },
+    { "kind": "event", "keywords": ["事件", "event"], "suggest": "事件", "path": "reference/events" },
+    { "kind": "condition", "keywords": ["条件"], "suggest": "条件", "path": "reference/conditions" },
+    { "kind": "compat", "keywords": ["兼容", "papi", "mythic", "skript"], "suggest": "兼容", "path": "compatibility" },
+    { "kind": "installation", "keywords": ["安装", "重载", "installation"], "suggest": "安装", "path": "getting_start/installation" },
+    { "kind": "template", "keywords": ["模板", "template"], "suggest": "模板", "path": "reference/template" },
+    { "kind": "behavior", "keywords": ["行为", "behavior"], "suggest": "行为", "path": "configuration/block/behaviors" },
+    { "kind": "model", "keywords": ["纹理", "模型", "texture", "model"], "suggest": "物品模型", "path": "configuration/item/models" },
+    { "kind": "api", "keywords": ["api", "接口"], "suggest": "API", "path": "api" },
+    { "kind": "addon", "keywords": ["插件", "addon", "模组"], "suggest": "插件", "path": "addon" }
+  ]
 }

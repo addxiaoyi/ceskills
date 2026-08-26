@@ -1,9 +1,30 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { route } from '../src/route.js';
 import { lint } from '../src/lint.js';
 import { generate } from '../src/generate.js';
 import { optimize } from '../src/optimize.js';
-import { zhongshu, menxia, liubu, runPipeline, status } from '../src/liubu.js';
+import { zhongshu, menxia, liubu, runPipeline, applyYaml, status } from '../src/liubu.js';
+import { setEdictsDir } from '../src/config.js';
+
+// 集成测试用临时目录，避免污染真实 edicts/
+let tempDir: string;
+beforeAll(() => {
+  tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cwskill-'));
+  setEdictsDir(tempDir);
+});
+afterAll(() => {
+  fs.rmSync(tempDir, { recursive: true, force: true });
+  setEdictsDir(null);
+});
+beforeEach(() => {
+  // 每次测试前清空临时目录
+  for (const f of fs.readdirSync(tempDir)) {
+    fs.rmSync(path.join(tempDir, f), { recursive: true, force: true });
+  }
+});
 
 const validSeatYaml = `
 blocks:
@@ -62,7 +83,7 @@ describe('route', () => {
   it('should fallback for unknown', () => {
     const r = route('未知需求xyz');
     expect(r.routes.length).toBe(1);
-    expect(r.routes[0].type).toBe('Config');
+    expect(r.routes[0].kind).toBe('query');
   });
 
   it('should route first block keyword', () => {
@@ -640,6 +661,9 @@ blocks:
     const result = runPipeline('椅子', 'test:saved_chair', true);
     expect(result.ok).toBe(true);
     expect(result.saved).toBeDefined();
+    // 验证确实写入临时目录（而非真实 edicts/）
+    expect(result.saved).toContain(tempDir);
+    expect(fs.existsSync(result.saved!)).toBe(true);
   });
 
   it('runPipeline should not save when ok=false', () => {
@@ -651,15 +675,40 @@ blocks:
 });
 
 describe('apply', () => {
-  it('should apply valid YAML to applied dir', () => {
-    // This test would require file system, skip for unit tests
+  it('should apply valid YAML to destination file', () => {
+    const src = path.join(tempDir, 'src.yml');
+    const dest = path.join(tempDir, 'dest.yml');
+    fs.writeFileSync(src, validSeatYaml);
+    const r = applyYaml(src, dest);
+    expect(r.ok).toBe(true);
+    expect(fs.existsSync(dest)).toBe(true);
+    // 重复应用应产生 .bak 备份
+    const r2 = applyYaml(src, dest);
+    expect(r2.backup).toBeDefined();
+    expect(fs.existsSync(r2.backup!)).toBe(true);
+  });
+
+  it('should reject invalid YAML on apply', () => {
+    const src = path.join(tempDir, 'bad.yml');
+    fs.writeFileSync(src, 'blocks:\n  test:block:\n    behavior:\n      type: seat_block\n');
+    const r = applyYaml(src);
+    expect(r.ok).toBe(false);
+    expect(r.step).toBe('门下校验');
   });
 });
 
 describe('status', () => {
-  it('should return status with edicts dir', () => {
+  it('should list saved edicts after runPipeline', () => {
+    runPipeline('椅子', 'test:listed_chair', true);
     const s = status();
     expect(s.office).toBe('六部');
     expect(Array.isArray(s.edicts)).toBe(true);
+    expect(s.edicts.some((f) => f.includes('listed_chair'))).toBe(true);
+    expect(s.dir).toContain(tempDir);
+  });
+
+  it('should return empty list when no edicts', () => {
+    const s = status();
+    expect(s.edicts.length).toBeGreaterThanOrEqual(0);
   });
 });

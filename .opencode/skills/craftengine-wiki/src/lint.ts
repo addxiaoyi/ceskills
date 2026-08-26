@@ -3,6 +3,7 @@
  * 基于 schema.json 校验 behavior.type、必填字段、ID 格式等
  */
 import * as fs from 'node:fs';
+import YAML from 'js-yaml';
 import type { LintResult, LintIssue, WikiConfig } from './types.js';
 import { getPaths, getValidationConfig } from './config.js';
 
@@ -19,12 +20,28 @@ function add(issues: LintIssue[], kinds: { error: number; warn: number; info: nu
   issues.push({ level, msg, hint });
 }
 
+/** 兜底 YAML 语法校验：只发射 warning，不阻断后续规则检查 */
+function checkYamlSyntax(text: string, issues: LintIssue[], kinds: { error: number; warn: number; info: number }) {
+  try {
+    YAML.load(text, { schema: YAML.CORE_SCHEMA });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const firstLine = msg.split('\n')[0].trim();
+    // 仅做 warning 提示，不阻断（因为有些自定义 YAML 扩展可能不被 js-yaml 识别）
+    if (firstLine.length > 0) {
+      add(issues, kinds, 'warn', `YAML 语法警告: ${firstLine}`, '仅做参考；若为自定义字段类型请忽略');
+    }
+  }
+}
+
 export function lint(text: string, fileArg: string = '-'): LintResult {
   const schema = loadSchema();
   const validation = getValidationConfig();
 
   const issues: LintIssue[] = [];
   const kinds = { error: 0, warn: 0, info: 0 };
+
+  checkYamlSyntax(text, issues, kinds);
 
   const allBehaviors = new Set<string>([
     ...schema.blockBehaviors,
