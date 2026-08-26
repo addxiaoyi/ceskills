@@ -1,0 +1,78 @@
+{
+  "name": "CraftEngine Wiki",
+  "wiki": {
+    "baseUrl": "https://ce-pre.gtemc.cn/zh-Hans",
+    "indexUrl": "https://ce-pre.gtemc.cn/zh-Hans/configuration"
+  },
+  "validation": {
+    "idPattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$",
+    "namespacePattern": "^[a-z][a-z0-9_.-]*$",
+    "pathPattern": "^[a-z0-9_./-]+$"
+  },
+  "lint": {
+    "requiredFields": {
+      "blocks": ["state", "states"],
+      "furniture": ["variants"]
+    }
+  },
+  "blockBehaviors": [
+    "attached_stem_block", "bouncing_block", "budding_block", "bush_block", "button_block",
+    "change_over_time_block", "chime_block", "concrete_powder_block", "crop_block", "decay_block",
+    "directional_attached_block", "display_item_block", "door_block", "double_high_block",
+    "drawer_block", "drop_experience_block", "face_attached_horizontal_directional_block",
+    "falling_block", "fence_block", "fence_gate_block", "grass_block", "hangable_block",
+    "hanging_block", "item_frame_block", "lamp_block", "leaves_block", "liquid_flowable_block",
+    "multi_high_block", "near_liquid_block", "on_liquid_block", "pressure_plate_block",
+    "sapling_block", "seagrass_like_block", "seat_block", "simple_particle_block",
+    "simple_storage_block", "slab_block", "snowy_block", "sofa_block", "spreading_block",
+    "stackable_block", "stairs_block", "stem_block", "strippable_block", "sturdy_base_block",
+    "surface_spreading_block", "tint_source_block", "toggleable_lamp_block", "trapdoor_block",
+    "vertical_crop_block", "wall_torch_particle_block"
+  ],
+  "itemBehaviors": [
+    "block_item", "ceiling_block_item", "compostable_item", "double_high_block_item",
+    "furniture_item", "ground_block_item", "liquid_collision_block_item",
+    "liquid_collision_furniture_item", "multi_high_block_item", "range_mining_item", "wall_block_item"
+  ],
+  "furnitureBehaviors": [
+    "display_item_furniture", "glowing_furniture", "simple_storage_furniture"
+  ],
+  "recipeTypes": [
+    "shaped", "shapeless", "smelting", "stonecutting", "smithing_transform", "smithing_trim", "brewing"
+  ],
+  "aliases": {
+    "椅子": "seat", "坐": "seat", "椅": "seat", "sofa": "seat",
+    "门": "door", "作物": "crop", "农作物": "crop", "下落": "falling", "掉落": "falling",
+    "家具": "furniture", "长椅": "furniture", "方块": "block", "物品": "item",
+    "配方": "recipe", "合成": "recipe", "掉落表": "loot", "战利品": "loot",
+    "条件": "condition", "兼容": "compatibility", "模板": "template", "纹理": "texture",
+    "模型": "model", "行为": "behavior", "安装": "installation", "重载": "installation",
+    "第一个方块": "first_block", "第一个物品": "items"
+  },
+  "typos": {
+    "seat": "seat_block", "sittable": "seat_block", "falling": "falling_block",
+    "door": "door_block", "crop": "crop_block", "blockitem": "block_item",
+    "furnitureitem": "furniture_item"
+  },
+  "routes": [
+    { "kind": "seat", "keywords": ["椅子", "坐", "椅", "sofa", "seat"], "suggest": "椅子", "path": "configuration/block/behaviors/seat_block" },
+    { "kind": "door", "keywords": ["门"], "suggest": "门", "path": "configuration/block/behaviors/door_block" },
+    { "kind": "crop", "keywords": ["作物", "农作物", "crop"], "suggest": "作物", "path": "configuration/block/behaviors/crop_block" },
+    { "kind": "loot", "keywords": ["掉落表", "战利品", "loot"], "suggest": "掉落表", "path": "reference/loot_table" },
+    { "kind": "falling", "keywords": ["下落", "掉落", "falling"], "suggest": "下落", "path": "configuration/block/behaviors/falling_block" },
+    { "kind": "furniture", "keywords": ["家具", "长椅", "furniture", "bench"], "suggest": "家具", "path": "configuration/furniture" },
+    { "kind": "first_block", "keywords": ["第一个方块", "新手方块"], "suggest": "第一个方块", "path": "getting_start/first_block" },
+    { "kind": "first_items", "keywords": ["第一个物品", "新手物品"], "suggest": "第一个物品", "path": "getting_start/items" },
+    { "kind": "item", "keywords": ["物品", "item"], "suggest": "物品", "path": "configuration/item" },
+    { "kind": "recipe", "keywords": ["配方", "合成", "recipe"], "suggest": "配方", "path": "configuration/recipe" },
+    { "kind": "event", "keywords": ["事件", "event"], "suggest": "事件", "path": "reference/events" },
+    { "kind": "condition", "keywords": ["条件"], "suggest": "条件", "path": "reference/conditions" },
+    { "kind": "compat", "keywords": ["兼容", "papi", "mythic", "skript"], "suggest": "兼容", "path": "compatibility" },
+    { "kind": "installation", "keywords": ["安装", "重载", "installation"], "suggest": "安装", "path": "getting_start/installation" },
+    { "kind": "template", "keywords": ["模板", "template"], "suggest": "模板", "path": "reference/template" },
+    { "kind": "behavior", "keywords": ["行为", "behavior"], "suggest": "行为", "path": "configuration/block/behaviors" },
+    { "kind": "model", "keywords": ["纹理", "模型", "texture", "model"], "suggest": "物品模型", "path": "configuration/item/models" },
+    { "kind": "api", "keywords": ["api", "接口"], "suggest": "API", "path": "api" },
+    { "kind": "addon", "keywords": ["插件", "addon", "模组"], "suggest": "插件", "path": "addon" }
+  ]
+}

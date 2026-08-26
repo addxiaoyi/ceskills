@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>六部工作流 · 通用 WebUI</title>
+<style>
+/* ========== Reset & Base ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1118;--surface:#1a1d2e;--surface2:#232740;--border:#2e3350;
+  --text:#e4e6f0;--text2:#9699b8;--accent:#6c5ce7;--accent2:#a29bfe;
+  --green:#00cec9;--red:#ff7675;--orange:#fdcb6e;--blue:#74b9ff;
+  --radius:8px;--font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono','Fira Code','Cascadia Code',monospace;
+}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--accent2);text-decoration:none}
+::selection{background:var(--accent);color:#fff}
+
+/* ========== Layout ========== */
+.app-layout{display:flex;flex:1;height:100vh;overflow:hidden}
+.sidebar{width:340px;min-width:340px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* ========== Header ========== */
+.header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0
+}
+.header h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.header h1 span{color:var(--accent2)}
+.badge{font-size:11px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:20px;font-weight:600}
+
+/* ========== Query Bar ========== */
+.query-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 24px;display:flex;gap:12px;align-items:center;flex-shrink:0
+}
+.query-bar input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:10px 14px;border-radius:var(--radius);font-size:14px;outline:none;transition:border .2s
+}
+.query-bar input:focus{border-color:var(--accent)}
+.query-bar button{
+  background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:var(--radius);
+  font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;white-space:nowrap
+}
+.query-bar button:hover{opacity:.85}
+.query-bar button:disabled{opacity:.4;cursor:not-allowed}
+
+/* ========== Steps Bar ========== */
+.steps-bar{
+  display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto
+}
+.step-tab{
+  padding:12px 20px;cursor:pointer;font-size:13px;font-weight:600;
+  border-bottom:3px solid transparent;transition:all .2s;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--text2)
+}
+.step-tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.step-tab.active{color:var(--accent2);border-color:var(--accent);background:rgba(108,92,231,.08)}
+.step-tab .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.pending{background:var(--border)}
+.dot.running{background:var(--orange);animation:pulse .8s infinite}
+.dot.pass{background:var(--green)}
+.dot.fail{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ========== Content Area ========== */
+.content{flex:1;padding:24px;overflow-y:auto}
+.content section{display:none}
+.content section.active{display:block}
+
+/* ========== Card ========== */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin-bottom:16px
+}
+.card h3{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card .meta{color:var(--text2);font-size:12px;margin-bottom:12px}
+.card .label{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.label.pass{background:rgba(0,206,201,.15);color:var(--green)}
+.label.fail{background:rgba(255,118,117,.15);color:var(--red)}
+.label.info{background:rgba(116,185,255,.15);color:var(--blue)}
+.label.warn{background:rgba(253,203,110,.15);color:var(--orange)}
+
+/* ========== Code ========== */
+pre,code{font-family:var(--mono);font-size:13px;line-height:1.5}
+pre{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+code{background:rgba(255,255,255,.06);padding:2px 5px;border-radius:3px}
+pre code{background:none;padding:0}
+
+/* ========== Issues ========== */
+.issue{margin:4px 0;padding:6px 10px;border-radius:4px;font-size:13px;display:flex;gap:8px;align-items:flex-start}
+.issue .level{flex-shrink:0;font-weight:700;min-width:40px}
+.issue.error{background:rgba(255,118,117,.08)}
+.issue.error .level{color:var(--red)}
+.issue.warn{background:rgba(253,203,110,.08)}
+.issue.warn .level{color:var(--orange)}
+.issue.info{background:rgba(116,185,255,.08)}
+.issue.info .level{color:var(--blue)}
+
+/* ========== Board ========== */
+.board{margin:6px 0;padding:10px 14px;border-radius:4px;display:flex;gap:10px;align-items:center;font-size:13px;border:1px solid var(--border)}
+.board.pass{border-color:rgba(0,206,201,.3);background:rgba(0,206,201,.05)}
+.board.fail{border-color:rgba(255,118,117,.3);background:rgba(255,118,117,.05)}
+.board .name{font-weight:700;min-width:50px}
+.board .duty{color:var(--text2);flex:1}
+.board .status{font-weight:600;font-size:12px}
+
+/* ========== Site Config Panel ========== */
+.sidebar-header{padding:16px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.sidebar-header button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:var(--radius);cursor:pointer;font-size:12px}
+.sidebar-body{padding:16px;flex:1;overflow-y:auto}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:var(--radius);font-size:13px;outline:none;font-family:var(--mono)}
+.form-group textarea{min-height:60px;resize:vertical;font-size:12px}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group .hint{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* ========== Edict Output ========== */
+.edict-output{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text2)}
+
+/* ========== Responsive ========== */
+@media(max-width:900px){
+  .sidebar{width:280px;min-width:280px}
+}
+@media(max-width:700px){
+  .app-layout{flex-direction:column;height:auto}
+  .sidebar{width:100%;min-width:auto;max-height:40vh;border-right:none;border-bottom:1px solid var(--border)}
+  .query-bar{flex-wrap:wrap}
+  .query-bar button{width:100%}
+}
+
+/* ========== Empty State ========== */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state h3{font-size:18px;color:var(--text);margin-bottom:8px}
+
+/* ========== Console Log ========== */
+.log{font-size:12px;font-family:var(--mono);padding:4px 0;color:var(--text2);display:flex;gap:8px}
+.log .time{color:var(--text2);flex-shrink:0;width:80px}
+.log .msg{flex:1}
+.log .msg.ok{color:var(--green)}
+.log .msg.err{color:var(--red)}
+.log .msg.info{color:var(--blue)}
+
+/* ========== Tabs inside Sidebar ========== */
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--border)}
+.sidebar-tab{padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s}
+.sidebar-tab:hover{color:var(--text)}
+.sidebar-tab.active{color:var(--accent2);border-color:var(--accent)}
+.sidebar-tab-content{display:none}
+.sidebar-tab-content.active{display:block}
+</style>
+</head>
+<body>
+<div class="app-layout">
+
+<!-- ========== Sidebar ========== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span>⚙ 站点配置</span>
+    <div style="display:flex;gap:6px">
+      <button onclick="importConfig()" title="导入配置">📥</button>
+      <button onclick="exportConfig()" title="导出配置">📤</button>
+      <button onclick="resetConfig()" title="重置为 CraftEngine">↺</button>
+    </div>
+  </div>
+  <div class="sidebar-tabs">
+    <div class="sidebar-tab active" onclick="switchSidebarTab(this,'tab-basic')">基本</div>
+    <div class="sidebar-tab" onclick="switchSidebarTab(this,'tab-advanced')">高级</div>
+    <div class="sidebar-tab" onclick="switchSidebarTab(this,'tab-routes')">路由</div>
+  </div>
+  <div class="sidebar-body">
+    <div class="sidebar-tab-content active" id="tab-basic">
+      <div class="form-group">
+        <label>站点名称</label>
+        <input id="cfg-name" value="CraftEngine Wiki" oninput="autoSaveConfig()">
+      </div>
+      <div class="form-group">
+        <label>Base URL（文档根地址）</label>
+        <input id="cfg-baseUrl" value="https://ce-pre.gtemc.cn/zh-Hans" oninput="autoSaveConfig()">
+      </div>
+      <div class="form-group">
+        <label>Index URL（首页）</label>
+        <input id="cfg-indexUrl" value="https://ce-pre.gtemc.cn/zh-Hans/configuration" oninput="autoSaveConfig()">
+      </div>
+      <div class="form-group">
+        <label>ID 格式正则</label>
+        <input id="cfg-idPattern" value="^[a-z0-9_.-]+:[a-z0-9_./-]+$" oninput="autoSaveConfig()">
+        <div class="hint">namespace:path 格式</div>
+      </div>
+      <div class="form-group">
+        <label>别名映射 (JSON)</label>
+        <textarea id="cfg-aliases" rows="8" oninput="autoSaveConfig()"></textarea>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-advanced">
+      <div class="form-group">
+        <label>Block 行为类型</label>
+        <textarea id="cfg-blockBehaviors" rows="4" oninput="autoSaveConfig()"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Item 行为类型</label>
+        <textarea id="cfg-itemBehaviors" rows="3" oninput="autoSaveConfig()"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Furniture 行为类型</label>
+        <textarea id="cfg-furnitureBehaviors" rows="2" oninput="autoSaveConfig()"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Recipe 类型</label>
+        <textarea id="cfg-recipeTypes" rows="2" oninput="autoSaveConfig()"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Typo 映射 (JSON)</label>
+        <textarea id="cfg-typos" rows="3" oninput="autoSaveConfig()"></textarea>
+      </div>
+    </div>
+    <div class="sidebar-tab-content" id="tab-routes">
+      <div class="form-group">
+        <label>路由规则 (JSON)</label>
+        <textarea id="cfg-routes" rows="18" oninput="autoSaveConfig()"></textarea>
+        <div class="hint">[{kind, keywords[], suggest, path}]</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="loadPredefined('craftengine')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-size:12px;flex:1">CraftEngine</button>
+        <button onclick="loadPredefined('generic')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-size:12px;flex:1">通用模板</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ========== Main ========== -->
+<main class="main">
+  <div class="header">
+    <h1>🏛 <span>六部</span>工作流</h1>
+    <span class="badge">通用版</span>
+    <span style="color:var(--text2);font-size:13px;margin-left:auto" id="status-text">就绪</span>
+  </div>
+
+  <div class="query-bar">
+    <input id="query-input" placeholder="输入需求，例如：做一个橡木椅子，带座椅功能..." onkeydown="if(event.key==='Enter')runWorkflow()">
+    <button id="run-btn" onclick="runWorkflow()">▶ 运行六部</button>
+  </div>
+
+  <div class="steps-bar" id="steps-bar">
+    <div class="step-tab active" data-step="0" onclick="switchStep(0)"><span class="dot" id="dot-0"></span> ① 中枢 · 路由</div>
+    <div class="step-tab" data-step="1" onclick="switchStep(1)"><span class="dot" id="dot-1"></span> ② 中枢 · 检索</div>
+    <div class="step-tab" data-step="2" onclick="switchStep(2)"><span class="dot" id="dot-2"></span> ③ 中枢 · 生成</div>
+    <div class="step-tab" data-step="3" onclick="switchStep(3)"><span class="dot" id="dot-3"></span> ④ 门下 · Lint</div>
+    <div class="step-tab" data-step="4" onclick="switchStep(4)"><span class="dot" id="dot-4"></span> ⑤ 门下 · 优化</div>
+    <div class="step-tab" data-step="5" onclick="switchStep(5)"><span class="dot" id="dot-5"></span> ⑥ 六部 · 审查</div>
+    <div class="step-tab" data-step="6" onclick="switchStep(6)"><span class="dot" id="dot-6"></span> ⑦ 谕旨 · 归档</div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">🔍</div>
+      <h3>准备就绪</h3>
+      <p>配置站点、输入需求，点击「运行六部」开始工作流</p>
+    </div>
+
+    <section id="step-0"></section>
+    <section id="step-1"></section>
+    <section id="step-2"></section>
+    <section id="step-3"></section>
+    <section id="step-4"></section>
+    <section id="step-5"></section>
+    <section id="step-6"></section>
+  </div>
+</main>
+
+</div>
+
+<script>
+// ===================================================================
+//  SITE CONFIG MODEL
+// ===================================================================
+const DEFAULT_CONFIG = {
+  name: 'CraftEngine Wiki',
+  wiki: { baseUrl: 'https://ce-pre.gtemc.cn/zh-Hans', indexUrl: 'https://ce-pre.gtemc.cn/zh-Hans/configuration' },
+  validation: { idPattern: '^[a-z0-9_.-]+:[a-z0-9_./-]+$', namespacePattern: '^[a-z][a-z0-9_.-]*$', pathPattern: '^[a-z0-9_./-]+$' },
+  lint: { requiredFields: { blocks: ['state','states'], furniture: ['variants'] } },
+  blockBehaviors: ['attached_stem_block','bouncing_block','budding_block','bush_block','button_block','change_over_time_block','chime_block','concrete_powder_block','crop_block','decay_block','directional_attached_block','display_item_block','door_block','double_high_block','drawer_block','drop_experience_block','face_attached_horizontal_directional_block','falling_block','fence_block','fence_gate_block','grass_block','hangable_block','hanging_block','item_frame_block','lamp_block','leaves_block','liquid_flowable_block','multi_high_block','near_liquid_block','on_liquid_block','pressure_plate_block','sapling_block','seagrass_like_block','seat_block','simple_particle_block','simple_storage_block','slab_block','snowy_block','sofa_block','spreading_block','stackable_block','stairs_block','stem_block','strippable_block','sturdy_base_block','surface_spreading_block','tint_source_block','toggleable_lamp_block','trapdoor_block','vertical_crop_block','wall_torch_particle_block'],
+  itemBehaviors: ['block_item','ceiling_block_item','compostable_item','double_high_block_item','furniture_item','ground_block_item','liquid_collision_block_item','liquid_collision_furniture_item','multi_high_block_item','range_mining_item','wall_block_item'],
+  furnitureBehaviors: ['display_item_furniture','glowing_furniture','simple_storage_furniture'],
+  recipeTypes: ['shaped','shapeless','smelting','stonecutting','smithing_transform','smithing_trim','brewing'],
+  aliases: { '椅子':'seat','坐':'seat','椅':'seat','sofa':'seat','门':'door','作物':'crop','农作物':'crop','下落':'falling','掉落':'falling','家具':'furniture','长椅':'furniture','方块':'block','物品':'item','配方':'recipe','合成':'recipe','掉落表':'loot','战利品':'loot','条件':'condition','兼容':'compatibility','模板':'template','纹理':'texture','模型':'model','行为':'behavior','安装':'installation','重载':'installation','第一个方块':'first_block','第一个物品':'items' },
+  typos: { 'seat':'seat_block','sittable':'seat_block','falling':'falling_block','door':'door_block','crop':'crop_block','blockitem':'block_item','furnitureitem':'furniture_item' },
+  routes: [
+    { kind:'seat', keywords:['椅子','坐','椅','sofa','seat'], suggest:'椅子', path:'configuration/block/behaviors/seat_block' },
+    { kind:'door', keywords:['门'], suggest:'门', path:'configuration/block/behaviors/door_block' },
+    { kind:'crop', keywords:['作物','农作物','crop'], suggest:'作物', path:'configuration/block/behaviors/crop_block' },
+    { kind:'loot', keywords:['掉落表','战利品','loot'], suggest:'掉落表', path:'reference/loot_table' },
+    { kind:'falling', keywords:['下落','掉落','falling'], suggest:'下落', path:'configuration/block/behaviors/falling_block' },
+    { kind:'furniture', keywords:['家具','长椅','furniture','bench'], suggest:'家具', path:'configuration/furniture' },
+    { kind:'first_block', keywords:['第一个方块','新手方块'], suggest:'第一个方块', path:'getting_start/first_block' },
+    { kind:'first_items', keywords:['第一个物品','新手物品'], suggest:'第一个物品', path:'getting_start/items' },
+    { kind:'item', keywords:['物品','item'], suggest:'物品', path:'configuration/item' },
+    { kind:'recipe', keywords:['配方','合成','recipe'], suggest:'配方', path:'configuration/recipe' },
+    { kind:'event', keywords:['事件','event'], suggest:'事件', path:'reference/events' },
+    { kind:'condition', keywords:['条件'], suggest:'条件', path:'reference/conditions' },
+    { kind:'compat', keywords:['兼容','papi','mythic','skript'], suggest:'兼容', path:'compatibility' },
+    { kind:'installation', keywords:['安装','重载','installation'], suggest:'安装', path:'getting_start/installation' },
+    { kind:'template', keywords:['模板','template'], suggest:'模板', path:'reference/template' },
+    { kind:'behavior', keywords:['行为','behavior'], suggest:'行为', path:'configuration/block/behaviors' },
+    { kind:'model', keywords:['纹理','模型','texture','model'], suggest:'物品模型', path:'configuration/item/models' },
+    { kind:'api', keywords:['api','接口'], suggest:'API', path:'api' },
+    { kind:'addon', keywords:['插件','addon','模组'], suggest:'插件', path:'addon' }
+  ]
+};
+
+const GENERIC_CONFIG = {
+  name: '通用文档站点',
+  wiki: { baseUrl: 'https://example.com/docs', indexUrl: 'https://example.com/docs' },
+  validation: { idPattern: '^[a-zA-Z0-9_.-]+$', namespacePattern: '^[a-z][a-z0-9_.-]*$', pathPattern: '^[a-z0-9_./-]+$' },
+  lint: { requiredFields: { blocks: ['state','states'], furniture: ['variants'] } },
+  blockBehaviors: [], itemBehaviors: [], furnitureBehaviors: [], recipeTypes: [],
+  typos: {},
+  aliases: {},
+  routes: [
+    { kind:'page', keywords:['文档','document','guide','指南'], suggest:'文档', path:'guide' },
+    { kind:'api', keywords:['api','interface','接口'], suggest:'API', path:'api' },
+    { kind:'tutorial', keywords:['教程','tutorial','getting started','入门'], suggest:'教程', path:'tutorial' }
+  ]
+};
+
+// ===================================================================
+//  CONFIG
+// ===================================================================
+let config = { ...DEFAULT_CONFIG };
+
+function loadConfig() {
+  try {
+    const saved = localStorage.getItem('workflow-config');
+    if (saved) { config = JSON.parse(saved); return; }
+  } catch {}
+  config = DEFAULT_CONFIG;
+}
+function saveConfig() { localStorage.setItem('workflow-config', JSON.stringify(config)); }
+
+function readConfigFromUI() {
+  config.name = document.getElementById('cfg-name').value;
+  config.wiki.baseUrl = document.getElementById('cfg-baseUrl').value;
+  config.wiki.indexUrl = document.getElementById('cfg-indexUrl').value;
+  config.validation.idPattern = document.getElementById('cfg-idPattern').value;
+  try { config.aliases = JSON.parse(document.getElementById('cfg-aliases').value || '{}'); } catch {}
+  try { config.blockBehaviors = JSON.parse(document.getElementById('cfg-blockBehaviors').value || '[]'); } catch {}
+  try { config.itemBehaviors = JSON.parse(document.getElementById('cfg-itemBehaviors').value || '[]'); } catch {}
+  try { config.furnitureBehaviors = JSON.parse(document.getElementById('cfg-furnitureBehaviors').value || '[]'); } catch {}
+  try { config.recipeTypes = JSON.parse(document.getElementById('cfg-recipeTypes').value || '[]'); } catch {}
+  try { config.typos = JSON.parse(document.getElementById('cfg-typos').value || '{}'); } catch {}
+  try { config.routes = JSON.parse(document.getElementById('cfg-routes').value || '[]'); } catch {}
+  saveConfig();
+}
+
+function writeConfigToUI() {
+  document.getElementById('cfg-name').value = config.name;
+  document.getElementById('cfg-baseUrl').value = config.wiki.baseUrl;
+  document.getElementById('cfg-indexUrl').value = config.wiki.indexUrl;
+  document.getElementById('cfg-idPattern').value = config.validation.idPattern;
+  document.getElementById('cfg-aliases').value = JSON.stringify(config.aliases, null, 2);
+  document.getElementById('cfg-blockBehaviors').value = JSON.stringify(config.blockBehaviors, null, 2);
+  document.getElementById('cfg-itemBehaviors').value = JSON.stringify(config.itemBehaviors, null, 2);
+  document.getElementById('cfg-furnitureBehaviors').value = JSON.stringify(config.furnitureBehaviors, null, 2);
+  document.getElementById('cfg-recipeTypes').value = JSON.stringify(config.recipeTypes, null, 2);
+  document.getElementById('cfg-typos').value = JSON.stringify(config.typos, null, 2);
+  document.getElementById('cfg-routes').value = JSON.stringify(config.routes, null, 2);
+}
+
+function autoSaveConfig() {
+  readConfigFromUI();
+}
+
+function importConfig() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = async (e) => {
+    try {
+      const text = await e.target.files[0].text();
+      config = JSON.parse(text);
+      writeConfigToUI(); saveConfig();
+      addLog('info', '导入配置成功');
+    } catch(err) { addLog('err', '导入失败: ' + err.message); }
+  };
+  input.click();
+}
+
+function exportConfig() {
+  readConfigFromUI();
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `${config.name}.json`; a.click();
+  URL.revokeObjectURL(url);
+  addLog('ok', '导出配置成功');
+}
+
+function resetConfig() { config = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); writeConfigToUI(); saveConfig(); addLog('info', '已重置为 CraftEngine 配置'); }
+function loadPredefined(type) {
+  config = JSON.parse(JSON.stringify(type === 'generic' ? GENERIC_CONFIG : DEFAULT_CONFIG));
+  writeConfigToUI(); saveConfig();
+  addLog('info', `已加载「${config.name}」配置`);
+}
+
+// ===================================================================
+//  UI HELPERS
+// ===================================================================
+function switchSidebarTab(el, tabId) {
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sidebar-tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+function switchStep(idx) {
+  document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.content section').forEach(s => s.classList.remove('active'));
+  document.getElementById('empty-state').style.display = 'none';
+  const tabs = document.querySelectorAll('.step-tab');
+  if (tabs[idx]) tabs[idx].classList.add('active');
+  const sec = document.getElementById(`step-${idx}`);
+  if (sec) { sec.classList.add('active'); }
+}
+
+function setDot(idx, state) {
+  const dot = document.getElementById(`dot-${idx}`);
+  if (!dot) return;
+  dot.className = 'dot ' + state;
+}
+
+function setStatus(text) {
+  document.getElementById('status-text').textContent = text;
+}
+
+function addLog(type, msg) {
+  const t = new Date().toLocaleTimeString();
+  const log = document.createElement('div');
+  log.className = 'log';
+  log.innerHTML = `<span class="time">${t}</span><span class="msg ${type}">${msg}</span>`;
+  const content = document.getElementById('content');
+  content.insertBefore(log, content.firstChild);
+  if (content.children.length > 50) content.removeChild(content.lastChild);
+}
+
+// ===================================================================
+//  CORE WORKFLOW
+// ===================================================================
+function runWorkflow() {
+  readConfigFromUI();
+  const q = document.getElementById('query-input').value.trim();
+  if (!q) { alert('请输入需求'); return; }
+
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('empty-state').style.display = 'none';
+  document.querySelectorAll('.content section').forEach(s => { s.innerHTML = ''; s.classList.remove('active'); });
+  for (let i = 0; i < 7; i++) setDot(i, 'pending');
+  setStatus('运行中...');
+
+  // 异步执行各步骤
+  setTimeout(() => {
+    try {
+      const stepRoute = doRoute(q);
+      switchStep(0);
+      setTimeout(() => {
+        try {
+          const stepQuery = doQuery(q, stepRoute);
+          switchStep(1);
+          setTimeout(() => {
+            try {
+              const stepGenerate = doGenerate(q, stepRoute, stepQuery);
+              switchStep(2);
+              setTimeout(() => {
+                try {
+                  const stepLint = doLint(stepGenerate);
+                  switchStep(3);
+                  setTimeout(() => {
+                    try {
+                      const stepOptimize = doOptimize(stepGenerate);
+                      switchStep(4);
+                      setTimeout(() => {
+                        try {
+                          const stepLiubu = doLiubu(stepGenerate, stepLint, stepQuery);
+                          switchStep(5);
+                          setTimeout(() => {
+                            try {
+                              doEdict(stepRoute, stepQuery, stepGenerate, stepLint, stepOptimize, stepLiubu);
+                              switchStep(6);
+                              setStatus('✅ 完成');
+                              setDot(6, 'pass');
+                            } catch(e) { setDot(6, 'fail'); setStatus('❌ 谕旨失败'); addLog('err', e.message); }
+                          }, 200);
+                        } catch(e) { setDot(5, 'fail'); setStatus('❌ 六部失败'); addLog('err', e.message); }
+                      }, 200);
+                    } catch(e) { setDot(4, 'fail'); setStatus('❌ 优化失败'); addLog('err', e.message); }
+                  }, 200);
+                } catch(e) { setDot(3, 'fail'); setStatus('❌ Lint失败'); addLog('err', e.message); }
+              }, 200);
+            } catch(e) { setDot(2, 'fail'); setStatus('❌ 生成失败'); addLog('err', e.message); }
+          }, 200);
+        } catch(e) { setDot(1, 'fail'); setStatus('❌ 检索失败'); addLog('err', e.message); }
+      }, 200);
+    } catch(e) { setDot(0, 'fail'); setStatus('❌ 路由失败'); addLog('err', e.message); }
+  }, 100);
+}
+
+// ===================================================================
+//  STEP 0: ROUTE
+// ===================================================================
+function doRoute(q) {
+  setDot(0, 'running');
+  const rules = config.routes || [];
+  let best = null, maxLen = 0;
+  for (const rule of rules) {
+    for (const kw of rule.keywords) {
+      if (q.toLowerCase().includes(kw.toLowerCase()) && kw.length > maxLen) {
+        maxLen = kw.length; best = rule;
+      }
+    }
+  }
+  const result = best ? {
+    kind: best.kind, suggest: best.suggest,
+    url: `${config.wiki.baseUrl}/${best.path}`
+  } : { kind: 'query', suggest: q.slice(0, 12), url: config.wiki.indexUrl };
+
+  const html = `<div class="card">
+    <h3>📍 路由结果</h3>
+    <div class="meta">命中规则：${best ? best.kind : '无（兜底到首页）'}</div>
+    <pre><code>${JSON.stringify(result, null, 2)}</code></pre>
+  </div>`;
+  document.getElementById('step-0').innerHTML = html;
+  setDot(0, 'pass');
+  setStatus('✅ 路由完成');
+  addLog('ok', `路由命中: ${result.kind} → ${result.url}`);
+  return result;
+}
+
+// ===================================================================
+//  STEP 1: QUERY
+// ===================================================================
+function doQuery(q, route) {
+  setDot(1, 'running');
+  const suggest = route.suggest || q;
+  // 模拟检索：基于别名和关键词匹配
+  const aliases = config.aliases || {};
+  const terms = [suggest.toLowerCase(), ...Object.entries(aliases).filter(([k]) => suggest.includes(k)).map(([,v]) => v)];
+
+  const hits = terms.map((t, i) => ({
+    id: `page:${t}`,
+    label: `📄 ${t} 页面`,
+    type: 'Page',
+    url: route.url,
+    yaml: `${t}: 示例 YAML 内容`,
+    page: `pages/${t}.md`,
+    score: (terms.length - i) * 5
+  })).slice(0, 5);
+
+  const html = `<div class="card">
+    <h3>📚 Wiki 检索</h3>
+    <div class="meta">检索词: ${terms.join(', ')}</div>
+    ${hits.length ? hits.map(h => `<div class="board pass">
+      <span class="name">${h.label}</span>
+      <span class="duty">${h.url}</span>
+      <span class="status">● 命中</span>
+    </div>`).join('') : '<div class="board fail"><span class="name">无结果</span><span class="duty">未命中任何 Wiki 条目</span></div>'}
+  </div>`;
+  document.getElementById('step-1').innerHTML = html;
+  setDot(1, hits.length ? 'pass' : 'fail');
+  setStatus(hits.length ? '✅ 检索完成' : '⚠️ 检索无结果');
+  addLog(hits.length ? 'ok' : 'warn', `检索到 ${hits.length} 条结果`);
+  return { hits, terms };
+}
+
+// ===================================================================
+//  STEP 2: GENERATE
+// ===================================================================
+function doGenerate(q, route, query) {
+  setDot(2, 'running');
+  const kind = route.kind || 'block';
+  const id = `${kind}:${q.replace(/[\s:]+/g,'_').toLowerCase().slice(0, 20)}`;
+
+  const templates = {
+    block: `blocks:\n  ${id}:\n    state:\n      auto_state: note_block\n      model:\n        texture: minecraft:block/stone\n    settings:\n      hardness: 1.5\n      resistance: 6.0\n      tags:\n        - minecraft:mineable/pickaxe`,
+    item: `items:\n  ${id}:\n    material: paper\n    texture: minecraft:item/paper\n    data:\n      item_name: "<white>${id}"`,
+    seat: `blocks:\n  ${id}:\n    state:\n      auto_state: note_block\n    behavior:\n      type: seat_block\n      seats:\n        - 0,0,0\nitems:\n  ${id}:\n    material: paper\n    behavior:\n      type: block_item\n      block: ${id}`,
+    door: `blocks:\n  ${id}:\n    state:\n      auto_state: note_block\n    behavior:\n      type: door_block`,
+    crop: `blocks:\n  ${id}:\n    state:\n      auto_state: note_block\n    behavior:\n      type: crop_block`,
+    falling: `blocks:\n  ${id}:\n    state:\n      auto_state: note_block\n    behavior:\n      type: falling_block`,
+    furniture: `furniture:\n  ${id}:\n    variants:\n      ground:\n        elements:\n          - item: ${id}\n        hitboxes:\n          - position: 0,0,0\n            type: shulker\n        seats:\n          - 0,0.35,0\n    settings:\n      hit_times: 3\nitems:\n  ${id}:\n    material: paper\n    behavior:\n      type: furniture_item\n      furniture: ${id}`,
+    recipe: `recipes:\n  ${id}:\n    type: shaped\n    pattern:\n      - " A "\n      - " A "\n      - " B "\n    ingredients:\n      A: minecraft:stick\n      B: minecraft:oak_planks\n    result: ${id}`
+  };
+  const yaml = templates[kind] || templates.block;
+  const result = { kind, id, yaml, wiki: route.url };
+
+  const html = `<div class="card">
+    <h3>📝 生成草稿</h3>
+    <div class="meta">kind: ${kind} | id: ${id}</div>
+    <pre><code>${escapeHtml(yaml)}</code></pre>
+  </div>`;
+  document.getElementById('step-2').innerHTML = html;
+  setDot(2, 'pass');
+  setStatus('✅ 生成完成');
+  addLog('ok', `生成 kind=${kind} id=${id}`);
+  return result;
+}
+
+// ===================================================================
+//  STEP 3: LINT
+// ===================================================================
+function doLint(gen) {
+  setDot(3, 'running');
+  const text = gen.yaml;
+  const issues = [];
+  const kinds = { error: 0, warn: 0, info: 0 };
+
+  // 检查 blocks/items/furniture/recipes
+  const hasBlocks = /^\s*blocks\s*:/m.test(text);
+  const hasItems = /^\s*items\s*:/m.test(text);
+  const hasFurniture = /^\s*furniture\s*:/m.test(text);
+  const hasRecipes = /^\s*recipes\s*:/m.test(text);
+
+  if (!hasBlocks && !hasItems && !hasFurniture && !hasRecipes) {
+    issues.push({ level: 'warn', msg: '未声明任何顶级键', hint: '' }); kinds.warn++;
+  }
+
+  if (hasBlocks && !/\b(state|states)\s*:/.test(text)) {
+    issues.push({ level: 'error', msg: 'Block 必须包含 state/states', hint: '' }); kinds.error++;
+  }
+  if (hasFurniture && !/\bvariants\s*:/.test(text)) {
+    issues.push({ level: 'error', msg: 'Furniture 必须包含 variants', hint: '' }); kinds.error++;
+  }
+
+  const allBehaviors = new Set([...config.blockBehaviors, ...config.itemBehaviors, ...config.furnitureBehaviors]);
+  const typeRe = /\btype\s*:\s*["']?([A-Za-z0-9_.:-]+)/g;
+  let m;
+  while ((m = typeRe.exec(text))) {
+    const t = m[1];
+    if (allBehaviors.has(t)) continue;
+    if (config.typos[t]) {
+      issues.push({ level: 'error', msg: `未知 behavior.type: ${t}，建议 ${config.typos[t]}`, hint: '' }); kinds.error++;
+    } else {
+      issues.push({ level: 'warn', msg: `未知 behavior.type: ${t}，不在白名单`, hint: '' }); kinds.warn++;
+    }
+  }
+
+  const result = { ok: kinds.error === 0, summary: kinds, issues };
+
+  const html = `<div class="card">
+    <h3>🔍 Lint 校验结果</h3>
+    <div class="meta">
+      <span class="label ${result.ok ? 'pass' : 'fail'}">${result.ok ? '✓ 通过' : '✗ 未通过'}</span>
+      &nbsp;error=${kinds.error} warn=${kinds.warn} info=${kinds.info}
+    </div>
+    ${issues.map(i => `<div class="issue ${i.level}">
+      <span class="level">${i.level.toUpperCase()}</span>
+      <span>${escapeHtml(i.msg)}</span>
+    </div>`).join('')}
+    ${!issues.length ? '<div style="color:var(--green);font-weight:600">🎉 无问题</div>' : ''}
+  </div>`;
+  document.getElementById('step-3').innerHTML = html;
+  setDot(3, result.ok ? 'pass' : 'fail');
+  setStatus(result.ok ? '✅ Lint 通过' : '❌ Lint 有 error');
+  addLog(result.ok ? 'ok' : 'err', `Lint: ${kinds.error} error, ${kinds.warn} warn, ${kinds.info} info`);
+  return result;
+}
+
+// ===================================================================
+//  STEP 4: OPTIMIZE
+// ===================================================================
+function doOptimize(gen) {
+  setDot(4, 'running');
+  const text = gen.yaml;
+  const tips = [];
+
+  if (/\bblocks\s*:/.test(text) && !/\bsounds\s*:/.test(text))
+    tips.push({ tip: '建议补充 sounds (break/step/place) 提升手感' });
+  if (/\bblocks\s*:/.test(text) && !/\btags\s*:/.test(text))
+    tips.push({ tip: '建议添加 tags: minecraft:mineable/pickaxe 等标签' });
+  if (/\bitems\s*:/.test(text) && !/\bitem_name\s*:/.test(text) && !/\bdata\s*:/.test(text))
+    tips.push({ tip: '物品建议配置 data.item_name 自定义显示名' });
+  if (/\btype\s*:\s*block_item\b/.test(text) && !/\bitems\s*:/.test(text))
+    tips.push({ tip: 'block_item 必须配套 items' });
+  if (/\btype\s*:\s*seat_block\b/.test(text) && !/\bfacing\b/.test(text))
+    tips.push({ tip: 'seat_block 建议添加 facing: horizontal_direction 支持转向' });
+
+  const html = `<div class="card">
+    <h3>💡 优化建议</h3>
+    <div class="meta">共 ${tips.length} 条建议</div>
+    ${tips.length ? tips.map(t => `<div class="issue info">
+      <span class="level">TIP</span>
+      <span>${escapeHtml(t.tip)}</span>
+    </div>`).join('') : '<div style="color:var(--green);font-weight:600">🎉 无需优化</div>'}
+  </div>`;
+  document.getElementById('step-4').innerHTML = html;
+  setDot(4, 'pass');
+  setStatus('✅ 优化建议完成');
+  addLog(tips.length ? 'info' : 'ok', `优化建议: ${tips.length} 条`);
+  return { tips };
+}
+
+// ===================================================================
+//  STEP 5: LIUBU
+// ===================================================================
+function doLiubu(gen, lint, query) {
+  setDot(5, 'running');
+  const t = gen.yaml;
+  const hit = (query.hits && query.hits[0]) ? query.hits[0] : null;
+
+  const boards = [
+    { name: '名实', duty: 'ID 必须符合 namespace:path 格式', ok: /[a-z0-9_.-]+:[a-z0-9_./-]+/.test(t) },
+    { name: '模型', duty: '必须声明渲染相关字段', ok: /\b(texture|model|material|block_item|furniture_item)\b/.test(t) || /\bfurniture\s*:/.test(t) },
+    { name: '典籍', duty: '至少命中一条 Wiki 条目', ok: Boolean(hit?.url) },
+    { name: '行为', duty: 'behavior.type 必须在白名单内', ok: !/\btype\s*:\s*(sittable|seat|falling|door)\b/.test(t) || /\btype\s*:\s*(seat_block|falling_block|door_block)\b/.test(t) },
+    { name: '刑名', duty: 'Lint 无 error', ok: lint.ok },
+    { name: '版图', duty: 'Block 必须有 state/states', ok: !/^\s*blocks\s*:/m.test(t) || /\b(state|states)\s*:/.test(t) }
+  ];
+
+  const passed = boards.filter(b => b.ok).length;
+  const ok = passed === 6;
+
+  const html = `<div class="card">
+    <h3>🏛 六部合规审查</h3>
+    <div class="meta">
+      <span class="label ${ok ? 'pass' : 'fail'}">${ok ? '✓ 全部通过' : '✗ 未通过'}</span>
+      &nbsp;${passed}/6 项通过
+    </div>
+    ${boards.map(b => `<div class="board ${b.ok ? 'pass' : 'fail'}">
+      <span class="name">${b.name}</span>
+      <span class="duty">${b.duty}</span>
+      <span class="status">${b.ok ? '✓ 通过' : '✗ 不通过'}</span>
+    </div>`).join('')}
+  </div>`;
+  document.getElementById('step-5').innerHTML = html;
+  setDot(5, ok ? 'pass' : 'fail');
+  setStatus(ok ? '✅ 六部审查通过' : '❌ 六部审查未通过');
+  addLog(ok ? 'ok' : 'err', `六部: ${passed}/6 通过`);
+  return { ok, passed, boards };
+}
+
+// ===================================================================
+//  STEP 6: EDICT
+// ===================================================================
+function doEdict(route, query, gen, lint, optimize, liubu) {
+  setDot(6, 'running');
+  const ok = lint.ok && liubu.ok;
+  const md = [];
+  md.push(`# ${ok ? '✅ 谕旨' : '❌ 驳回'} | 六部审查报告`);
+  md.push('');
+  md.push(`- 需求: ${document.getElementById('query-input').value}`);
+  md.push(`- 路由: ${route.kind} → ${route.url}`);
+  md.push(`- 草稿: ${gen.kind} \`${gen.id}\``);
+  md.push(`- Lint: ${lint.ok ? '通过' : '未通过'} (error=${lint.summary.error})`);
+  md.push(`- 优化: ${optimize.tips.length} 条建议`);
+  md.push(`- 六部: ${liubu.passed}/${liubu.boards.length} 项通过`);
+  md.push('');
+
+  if (ok) {
+    md.push('## 谕旨正文');
+    md.push('```yaml');
+    md.push(gen.yaml);
+    md.push('```');
+  } else {
+    md.push('## 驳回理由');
+    for (const i of lint.issues) md.push(`- [${i.level}] ${i.msg}`);
+    for (const b of liubu.boards.filter(x => !x.ok)) md.push(`- ${b.name} 不通过`);
+  }
+
+  const html = `<div class="card">
+    <h3>📜 ${ok ? '谕旨' : '驳回'}</h3>
+    <div class="meta">
+      <span class="label ${ok ? 'pass' : 'fail'}">${ok ? '✓ 已通过，可归档' : '✗ 未通过，需修正'}</span>
+    </div>
+    <div class="edict-output">${escapeHtml(md.join('\n'))}</div>
+  </div>`;
+  document.getElementById('step-6').innerHTML = html;
+  setDot(6, ok ? 'pass' : 'fail');
+  setStatus(ok ? '✅ 谕旨完成，可归档' : '❌ 驳回，需修正');
+  addLog(ok ? 'ok' : 'err', '谕旨完成');
+}
+
+// ===================================================================
+//  UTILS
+// ===================================================================
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===================================================================
+//  INIT
+// ===================================================================
+loadConfig();
+writeConfigToUI();
+addLog('info', '六部工作流 WebUI 就绪，配置 CraftEngine 已加载');
+</script>
+</body>
+</html>
