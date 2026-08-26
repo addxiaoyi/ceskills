@@ -21,8 +21,13 @@ a{color:var(--accent2);text-decoration:none}
 
 /* ========== Layout ========== */
 .app-layout{display:flex;flex:1;height:100vh;overflow:hidden}
-.sidebar{width:340px;min-width:340px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
-.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar{width:340px;min-width:340px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;transition:margin .3s,opacity .3s}
+.sidebar.collapsed{margin-left:-340px;opacity:0;pointer-events:none}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+
+/* ========== Sidebar toggle ========== */
+.sidebar-toggle{background:none;border:none;color:var(--text2);padding:6px;border-radius:4px;cursor:pointer;font-size:16px;transition:color .2s;display:flex;align-items:center}
+.sidebar-toggle:hover{color:var(--text);background:var(--surface2)}
 
 /* ========== Header ========== */
 .header{
@@ -45,28 +50,41 @@ a{color:var(--accent2);text-decoration:none}
 .query-bar input:focus{border-color:var(--accent)}
 .query-bar button{
   background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:var(--radius);
-  font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;white-space:nowrap
+  font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s,box-shadow .2s;white-space:nowrap
 }
-.query-bar button:hover{opacity:.85}
-.query-bar button:disabled{opacity:.4;cursor:not-allowed}
+.query-bar button:hover{opacity:.85;box-shadow:0 0 20px rgba(108,92,231,.3)}
+.query-bar button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.query-bar button:not(:disabled):not(:hover){animation:glow-pulse 3s ease-in-out infinite}
+@keyframes glow-pulse{0%,100%{box-shadow:0 0 0 rgba(108,92,231,0)}50%{box-shadow:0 0 16px rgba(108,92,231,.25)}}
 
 /* ========== Steps Bar ========== */
-.steps-bar{
-  display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto
-}
-.step-tab{
-  padding:12px 20px;cursor:pointer;font-size:13px;font-weight:600;
-  border-bottom:3px solid transparent;transition:all .2s;
-  display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--text2)
-}
+.steps-bar{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;position:relative}
+.step-tab{padding:12px 20px;cursor:pointer;font-size:13px;font-weight:600;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--text2);position:relative}
 .step-tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
 .step-tab.active{color:var(--accent2);border-color:var(--accent);background:rgba(108,92,231,.08)}
-.step-tab .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.step-tab .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
 .dot.pending{background:var(--border)}
 .dot.running{background:var(--orange);animation:pulse .8s infinite}
 .dot.pass{background:var(--green)}
 .dot.fail{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ========== Step colors ========== */
+.step-tab[data-step="0"]{--step-color:#6c5ce7}
+.step-tab[data-step="1"]{--step-color:#74b9ff}
+.step-tab[data-step="2"]{--step-color:#a29bfe}
+.step-tab[data-step="3"]{--step-color:#fdcb6e}
+.step-tab[data-step="4"]{--step-color:#00cec9}
+.step-tab[data-step="5"]{--step-color:#ff7675}
+.step-tab[data-step="6"]{--step-color:#55efc4}
+.step-tab[data-step].active{border-color:var(--step-color)}
+.step-tab[data-step].active .dot{background:var(--step-color)}
+.step-tab[data-step] .dot.pass{background:var(--step-color)}
+
+/* ========== Progress bar ========== */
+.progress-track{height:3px;background:var(--border);flex-shrink:0;position:relative}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .5s ease;width:0%;border-radius:0 2px 2px 0}
+.progress-fill.fail{background:linear-gradient(90deg,var(--accent),var(--red))}
 
 /* ========== Content Area ========== */
 .content{flex:1;padding:24px;overflow-y:auto}
@@ -137,12 +155,16 @@ pre code{background:none;padding:0}
 /* ========== Responsive ========== */
 @media(max-width:900px){
   .sidebar{width:280px;min-width:280px}
+  .sidebar.collapsed{margin-left:-280px}
 }
 @media(max-width:700px){
   .app-layout{flex-direction:column;height:auto}
   .sidebar{width:100%;min-width:auto;max-height:40vh;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar.collapsed{margin-left:0;max-height:0;overflow:hidden;padding:0;border:none}
   .query-bar{flex-wrap:wrap}
   .query-bar button{width:100%}
+  .step-tab{padding:10px 12px;font-size:12px}
+  .step-tab .dot{width:6px;height:6px}
 }
 
 /* ========== Empty State ========== */
@@ -248,13 +270,14 @@ pre code{background:none;padding:0}
 <!-- ========== Main ========== -->
 <main class="main">
   <div class="header">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" id="sidebar-toggle" title="折叠/展开配置面板（Ctrl+B）">☰</button>
     <h1>🏛 <span>六部</span>工作流</h1>
     <span class="badge">通用版</span>
     <span style="color:var(--text2);font-size:13px;margin-left:auto" id="status-text">就绪</span>
   </div>
 
   <div class="query-bar">
-    <input id="query-input" placeholder="输入需求，例如：做一个橡木椅子，带座椅功能..." onkeydown="if(event.key==='Enter')runWorkflow()">
+    <input id="query-input" placeholder="输入需求，例如：做一个橡木椅子，带座椅功能... (Ctrl+Enter 运行)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();runWorkflow()}">
     <button id="run-btn" onclick="runWorkflow()">▶ 运行六部</button>
   </div>
 
@@ -267,6 +290,8 @@ pre code{background:none;padding:0}
     <div class="step-tab" data-step="5" onclick="switchStep(5)"><span class="dot" id="dot-5"></span> ⑥ 六部 · 审查</div>
     <div class="step-tab" data-step="6" onclick="switchStep(6)"><span class="dot" id="dot-6"></span> ⑦ 谕旨 · 归档</div>
   </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
 
   <div class="content" id="content">
     <div class="empty-state" id="empty-state">
@@ -360,6 +385,9 @@ function readConfigFromUI() {
   const parseField = (id, target) => {
     const el = document.getElementById(id);
     if (!el) return;
+    // 清除旧错误提示
+    let errHint = el.parentElement.querySelector('.json-error-hint');
+    if (errHint) errHint.remove();
     try {
       config[target] = JSON.parse(el.value);
       el.classList.remove('json-invalid');
@@ -368,6 +396,12 @@ function readConfigFromUI() {
       ok = false;
       el.classList.add('json-invalid');
       el.setAttribute('title', 'JSON 语法错误: ' + e.message);
+      // 显示内联错误提示
+      errHint = document.createElement('div');
+      errHint.className = 'json-error-hint';
+      errHint.textContent = '⚠ ' + e.message;
+      errHint.style.cssText = 'color:var(--red);font-size:11px;margin-top:2px;font-family:var(--mono)';
+      el.parentElement.appendChild(errHint);
     }
   };
 
@@ -458,6 +492,13 @@ function switchSidebarTab(el, tabId) {
   document.getElementById(tabId).classList.add('active');
 }
 
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('sidebar-toggle');
+  sb.classList.toggle('collapsed');
+  btn.textContent = sb.classList.contains('collapsed') ? '☰' : '✕';
+}
+
 function switchStep(idx) {
   document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.content section').forEach(s => s.classList.remove('active'));
@@ -466,6 +507,11 @@ function switchStep(idx) {
   if (tabs[idx]) tabs[idx].classList.add('active');
   const sec = document.getElementById(`step-${idx}`);
   if (sec) { sec.classList.add('active'); }
+  // 自动滚动到步骤内容
+  setTimeout(() => {
+    const content = document.getElementById('content');
+    if (content) content.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 50);
 }
 
 function setDot(idx, state) {
@@ -476,6 +522,13 @@ function setDot(idx, state) {
 
 function setStatus(text) {
   document.getElementById('status-text').textContent = text;
+}
+
+function updateProgress(step, total, failed) {
+  const bar = document.getElementById('progress-fill');
+  if (!bar) return;
+  bar.style.width = `${((step) / total) * 100}%`;
+  bar.classList.toggle('fail', failed);
 }
 
 function addLog(type, msg) {
@@ -516,6 +569,7 @@ async function runWorkflow() {
   document.getElementById('empty-state').style.display = 'none';
   document.querySelectorAll('.content section').forEach(s => { s.innerHTML = ''; });
   for (let i = 0; i < 7; i++) setDot(i, 'pending');
+  updateProgress(0, 7, false);
   setStatus('运行中...');
 
   // 步骤定义：每个 step 是 async 函数，返回 boolean 表示该步是否"通过"
@@ -533,17 +587,18 @@ async function runWorkflow() {
   try {
     for (let i = 0; i < steps.length; i++) {
       switchStep(i);
-      // 视觉上让当前步骤呈"运行中"（微延迟以渲染动画）
       setDot(i, 'running');
+      updateProgress(i, steps.length, false);
       await sleep(120);
       const passed = await Promise.resolve().then(steps[i].fn);
-      // 谕旨步骤若主体通过但 lint/六部有 error，dot 仍标 fail
       if (i === 6) {
         const allOk = state.liubu.ok && state.lint.ok;
         setDot(6, allOk ? 'pass' : 'fail');
+        updateProgress(i + 1, steps.length, !allOk);
         setStatus(allOk ? '✅ 工作流完成，可归档' : '❌ 驳回：存在未通过项');
       } else {
         setDot(i, passed ? 'pass' : 'fail');
+        updateProgress(i + 1, steps.length, !passed);
         setStatus(passed ? `✅ ${steps[i].name}完成` : `⚠️ ${steps[i].name}未通过`);
       }
     }
@@ -899,6 +954,38 @@ function copyYaml(btn) {
 loadConfig();
 writeConfigToUI();
 addLog('info', '六部工作流 WebUI 就绪，配置 CraftEngine 已加载');
+
+// 快捷键：Ctrl+Enter 运行，Ctrl+B 折叠侧边栏
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.ctrlKey) {
+    e.preventDefault();
+    runWorkflow();
+  } else if (e.key.toLowerCase() === 'b' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    toggleSidebar();
+  }
+});
+
+// 恢复侧边栏折叠状态
+(() => {
+  try {
+    const collapsed = localStorage.getItem('sidebar-collapsed') === '1';
+    if (collapsed) {
+      document.getElementById('sidebar').classList.add('collapsed');
+      document.getElementById('sidebar-toggle').textContent = '☰';
+    }
+  } catch {}
+})();
+function persistSidebarState() {
+  const sb = document.getElementById('sidebar');
+  try { localStorage.setItem('sidebar-collapsed', sb.classList.contains('collapsed') ? '1' : '0'); } catch {}
+}
+// 覆盖 toggleSidebar 以持久化
+const _origToggleSidebar = toggleSidebar;
+toggleSidebar = function() {
+  _origToggleSidebar();
+  persistSidebarState();
+};
 </script>
 </body>
 </html>
